@@ -446,7 +446,9 @@
             return true;
         }
  
-        const WORKER_URL = "https://campusfix-ai.arslannovruzlu7.workers.dev"; // 404 olarsa AI Studio-dakı cari modelin adı ilə əvəz edin
+        /* ---------- Sİ (Cloudflare Worker vasitəsilə Gemini) ilə dublikat aşkarlanması ---------- */
+        // Gemini açarı burada YOXDUR. O, yalnız Cloudflare Worker-də gizli saxlanılır.
+        const WORKER_URL = "https://campusfix-ai.arslannovruzlu7.workers.dev";
  
         const aiCache = new Map(); // eyni sorğunu təkrar göndərməmək üçün
  
@@ -468,14 +470,14 @@ ${list}
 Yeni problem: ${description}`;
  
             const res = await fetch(WORKER_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { responseMimeType: "application/json", temperature: 0 }
-    })
-});
-if (!res.ok) throw new Error("Sİ xətası " + res.status + ": " + await res.text());
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: prompt }] }],
+                    generationConfig: { responseMimeType: "application/json", temperature: 0 }
+                })
+            });
+            if (!res.ok) throw new Error("Sİ xətası " + res.status + ": " + await res.text());
             const data = await res.json();
             const txt = data.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
             const { match } = JSON.parse(txt);
