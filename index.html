@@ -116,17 +116,17 @@
         <section id="view-user" class="space-y-6">
             <div class="max-w-2xl mx-auto bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sm:p-8">
                 <div class="mb-6 border-b pb-4">
-                    <h2 class="text-lg font-bold text-slate-900">Yeni Problem Bildir</h2>
-                    <p class="text-xs text-slate-500">Heç bir qeydiyyat tələb olunmur. Problem müşahidə etdiyiniz yeri qeyd edin.</p>
+                    <h2 class="text-lg font-bold text-slate-900">Problemi Bildirin</h2>
+                    <p class="text-xs text-slate-500">Qarşılaşdığınız Problemi Yazıb Göndərin, Biz həll Edək</p>
                 </div>
  
-                <!-- Uğur bildirişi (səhifədaxili) -->
+                <!-- Uğur / xəta bildirişi (səhifədaxili) -->
                 <div id="successBox" class="hidden mb-4 bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs p-3 rounded-xl flex items-center gap-2">
                     <i class="fa-solid fa-circle-check"></i>
                     <span id="successText"></span>
                 </div>
  
-                <form id="problemForm" onsubmit="submitProblem(event)" class="space-y-4">
+                <form id="problemForm" onsubmit="submitProblem(event)" class="space-y-4" novalidate>
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <div>
                             <label class="block text-xs font-semibold text-slate-700 mb-1">Bina</label>
@@ -134,11 +134,17 @@
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-slate-700 mb-1">Mərtəbə</label>
-                            <input type="text" id="floor" required oninput="runDuplicateCheck()" placeholder="Məs: 3-cü mərtəbə" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <input type="text" id="floor" required inputmode="numeric" pattern="[1-9][0-9]*"
+                                   title="0-dan böyük natural ədəd daxil edin" maxlength="3"
+                                   oninput="onlyNatural(this)" placeholder="Məs: 3"
+                                   class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-slate-700 mb-1">Otaq / Məkan</label>
-                            <input type="text" id="room" required oninput="runDuplicateCheck()" placeholder="Məs: 302-ci otaq" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <input type="text" id="room" required inputmode="numeric" pattern="[1-9][0-9]*"
+                                   title="0-dan böyük natural ədəd daxil edin" maxlength="5"
+                                   oninput="onlyNatural(this)" placeholder="Məs: 302"
+                                   class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
                         </div>
                     </div>
  
@@ -161,6 +167,11 @@
                         <span class="text-[10px] bg-indigo-200/60 px-2 py-0.5 rounded font-medium text-indigo-800">Avtomatik Təyin Edildi</span>
                     </div>
  
+                    <!-- Sİ yoxlanış göstəricisi -->
+                    <div id="dupChecking" class="hidden text-[11px] text-slate-500 flex items-center gap-2">
+                        <i class="fa-solid fa-spinner fa-spin"></i> Oxşar problemlər yoxlanılır...
+                    </div>
+ 
                     <!-- DUBLİKAT XƏBƏRDARLIĞI -->
                     <div id="duplicateBox" class="hidden bg-orange-50 border border-orange-300 rounded-xl p-4 text-xs text-orange-900 space-y-3">
                         <div class="flex items-start gap-2">
@@ -171,11 +182,13 @@
                             <span>Status: <strong id="dupStatus"></strong></span>
                             <span><i class="fa-solid fa-users mr-1"></i><strong id="dupCount">1</strong> nəfər bildirib</span>
                         </div>
-                        <div class="flex flex-col sm:flex-row gap-2 pl-6">
+                        <div class="flex flex-col gap-2 pl-6">
                             <button type="button" id="dupSupportBtn" onclick="supportExisting()" class="bg-orange-500 hover:bg-orange-600 text-white font-semibold px-3.5 py-2 rounded-lg transition flex items-center justify-center gap-1.5">
                                 <i class="fa-solid fa-thumbs-up"></i> Eyni problemdir, dəstək ver (+1)
                             </button>
-                            <span class="text-[11px] text-orange-700 self-center">Fərqli problemdirsə, təsviri dəyişib yenidən yoxlayın.</span>
+                            <button type="button" onclick="dismissDuplicate()" class="text-orange-700 underline text-[11px] text-left">
+                                Xeyr, bu fərqli problemdir – yenə də göndər
+                            </button>
                         </div>
                     </div>
  
@@ -276,11 +289,10 @@
                         <table class="w-full text-left border-collapse text-sm">
                             <thead>
                                 <tr class="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-600 uppercase">
-                                    <th class="p-4">ID / Məkan</th>
+                                    <th class="p-4">Məkan</th>
                                     <th class="p-4">Göndərən</th>
                                     <th class="p-4">Təsvir</th>
                                     <th class="p-4">Kateqoriya</th>
-                                    <th class="p-4 text-center">Dəstək</th>
                                     <th class="p-4">Status</th>
                                     <th class="p-4 text-right">Əməliyyat</th>
                                 </tr>
@@ -399,52 +411,82 @@
         }
         const normLoc = (s) => norm(s).replace(/[^a-z0-9]/g, '');
  
-        // Açar sözlər (normallaşmış formada)
-        const KEYWORDS = [
-            'stol', 'stul', 'kursu', 'taxta', 'pencere', 'qapi', 'kilid', 'divar', 'tavan', 'doseme',
-            'proyektor', 'kondisioner', 'radiator', 'isitme', 'soyutma', 'havalandirma',
-            'internet', 'wifi', 'komputer', 'noutbuk', 'printer', 'monitor', 'ekran', 'klaviatura', 'siçan',
-            'isiq', 'lampa', 'rozetka', 'elektrik', 'kran', 'su', 'tualet', 'lift', 'kitab'
-        ];
- 
-        function getWords(text) {
-            return norm(text).split(/[^a-z0-9]+/).filter(Boolean);
+        // Yalnız rəqəmlərə icazə verir, əvvəldəki sıfırları silir (0, 00, 05 → mümkün olmur)
+        function onlyNatural(el) {
+            el.value = el.value.replace(/\D/g, '').replace(/^0+/, '');
+            runDuplicateCheck();
         }
  
-        function extractKeywords(text) {
-            const words = getWords(text);
-            const found = new Set();
-            KEYWORDS.forEach(k => {
-                if (words.some(w => w === k || (k.length >= 4 && w.startsWith(k)))) found.add(k);
-            });
+        // Bütün xanaların dolu və düzgün olduğunu yoxlayır
+        function validateForm() {
+            const fields = [
+                ['building', 'Bina'],
+                ['floor', 'Mərtəbə'],
+                ['room', 'Otaq / Məkan'],
+                ['senderName', 'Adınız'],
+                ['description', 'Problemin təsviri']
+            ];
+            for (const [id, label] of fields) {
+                const el = document.getElementById(id);
+                if (!el.value.trim()) {          // yalnız boşluqdan ibarət olanı da tutur
+                    showSuccess(`"${label}" xanası doldurulmalıdır.`, true);
+                    el.focus();
+                    return false;
+                }
+            }
+            const isNatural = (v) => /^[1-9]\d*$/.test(v.trim());
+            for (const [id, label] of [['floor', 'Mərtəbə'], ['room', 'Otaq']]) {
+                const el = document.getElementById(id);
+                if (!isNatural(el.value)) {
+                    showSuccess(`"${label}" 0-dan böyük natural ədəd olmalıdır.`, true);
+                    el.focus();
+                    return false;
+                }
+            }
+            return true;
+        }
+ 
+        /* ---------- Sİ (Gemini) ilə dublikat aşkarlanması ---------- */
+        const GEMINI_KEY = "AIzaSyDR0QX8qUZw0ReoipsWb9bS6yD1UDqdBJ0";
+        const GEMINI_MODEL = "gemini-2.5-flash-lite"; // 404 olarsa AI Studio-dakı cari modelin adı ilə əvəz edin
+ 
+        const aiCache = new Map(); // eyni sorğunu təkrar göndərməmək üçün
+ 
+        async function aiFindDuplicate(candidates, description) {
+            const key = candidates.map(c => c.id).join(',') + '|' + norm(description);
+            if (aiCache.has(key)) return aiCache.get(key);
+ 
+            const list = candidates.map((p, i) => `${i + 1}. ${p.description}`).join("\n");
+            const prompt =
+`Sən kampus problem sistemində dublikat aşkarlayırsan.
+Yeni problem mövcud problemlərdən biri ilə EYNİ konkret nasazlığı təsvir edirsə, onun nömrəsini qaytar.
+Eyni otaq/eyni əşya olsa belə, nasazlıq fərqlidirsə (məs: "proyektor işləmir" və "proyektorun pultu itib") dublikat DEYİL.
+Sinonimləri nəzərə al (stol=masa, sınıq=qırıq).
+Yalnız JSON qaytar: {"match": nömrə və ya null}
+ 
+Mövcud problemlər:
+${list}
+ 
+Yeni problem: ${description}`;
+ 
+            const res = await fetch(
+                `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`,
+                {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", "x-goog-api-key": GEMINI_KEY },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: prompt }] }],
+                        generationConfig: { responseMimeType: "application/json", temperature: 0 }
+                    })
+                }
+            );
+            if (!res.ok) throw new Error("Gemini xətası: " + res.status);
+            const data = await res.json();
+            const txt = data.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
+            const { match } = JSON.parse(txt);
+            const found = Number.isInteger(match) ? (candidates[match - 1] || null) : null;
+            aiCache.set(key, found);
             return found;
-        }
- 
-        function isSimilar(textA, textB) {
-            // 1) Ortaq açar söz
-            const kA = extractKeywords(textA), kB = extractKeywords(textB);
-            for (const k of kA) if (kB.has(k)) return true;
- 
-            // 2) Ümumi söz kökləri üzrə oxşarlıq (Jaccard)
-            const stems = (t) => new Set(getWords(t).filter(w => w.length >= 4).map(w => w.slice(0, 5)));
-            const sA = stems(textA), sB = stems(textB);
-            if (sA.size === 0 || sB.size === 0) return false;
-            let common = 0;
-            sA.forEach(s => { if (sB.has(s)) common++; });
-            const union = sA.size + sB.size - common;
-            return common >= 2 && (common / union) >= 0.5;
-        }
- 
-        function findDuplicate(building, floor, room, description) {
-            const b = normLoc(building), f = normLoc(floor), r = normLoc(room);
-            if (!b || !f || !r || !description || description.trim().length < 5) return null;
-            return problemsCache.find(p =>
-                isActive(p) &&
-                normLoc(p.building) === b &&
-                normLoc(p.floor) === f &&
-                normLoc(p.room) === r &&
-                isSimilar(description, p.description)
-            ) || null;
         }
  
         /* ---------- Dəstək verilənlərin yadda saxlanması (brauzer) ---------- */
@@ -459,24 +501,56 @@
         }
  
         /* ---------- Dublikat yoxlanışı (UI) ---------- */
+        let dupTimer = null, dupSeq = 0, dismissedFor = null;
+ 
+        // Hər düymə basılışında yox, 800 ms fasilədən sonra yoxlayır
         function runDuplicateCheck() {
-            const dup = findDuplicate(
-                document.getElementById('building').value,
-                document.getElementById('floor').value,
-                document.getElementById('room').value,
-                document.getElementById('description').value
-            );
-            currentDuplicate = dup;
+            clearTimeout(dupTimer);
+            dupTimer = setTimeout(doDuplicateCheck, 800);
+        }
+ 
+        function clearDuplicateUI() {
+            currentDuplicate = null;
+            document.getElementById('duplicateBox').classList.add('hidden');
+            document.getElementById('dupChecking').classList.add('hidden');
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.disabled = false;
+            submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
+ 
+        async function doDuplicateCheck() {
+            const b = document.getElementById('building').value;
+            const f = document.getElementById('floor').value;
+            const r = document.getElementById('room').value;
+            const d = document.getElementById('description').value.trim();
             const box = document.getElementById('duplicateBox');
             const submitBtn = document.getElementById('submitBtn');
+            const checking = document.getElementById('dupChecking');
  
-            if (!dup) {
-                box.classList.add('hidden');
-                submitBtn.disabled = false;
-                submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-                return null;
+            const seq = ++dupSeq;
+ 
+            if (!b.trim() || !f.trim() || !r.trim() || d.length < 5 || dismissedFor === d) {
+                return clearDuplicateUI();
             }
  
+            // 1) Pulsuz filtr: yalnız eyni bina + mərtəbə + otaqdakı aktiv problemlər
+            const nb = normLoc(b), nf = normLoc(f), nr = normLoc(r);
+            const candidates = problemsCache.filter(p =>
+                isActive(p) && normLoc(p.building) === nb && normLoc(p.floor) === nf && normLoc(p.room) === nr
+            );
+            if (candidates.length === 0) return clearDuplicateUI();
+ 
+            // 2) Sİ qərarı
+            checking.classList.remove('hidden');
+            let dup = null;
+            try {
+                dup = await aiFindDuplicate(candidates, d);
+            } catch (e) { console.error(e); }   // xəta olsa istifadəçini bloklama
+            if (seq !== dupSeq) return;          // köhnə cavab, ignor et
+            checking.classList.add('hidden');
+            if (!dup) return clearDuplicateUI();
+ 
+            currentDuplicate = dup;
             document.getElementById('dupDescription').innerText = '«' + dup.description + '»';
             document.getElementById('dupStatus').innerText = dup.status || 'Yeni';
             document.getElementById('dupCount').innerText = dup.reportsCount || 1;
@@ -493,7 +567,13 @@
             box.classList.remove('hidden');
             submitBtn.disabled = true;
             submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
-            return dup;
+        }
+ 
+        // "Fərqli problemdir – yenə də göndər"
+        function dismissDuplicate() {
+            dismissedFor = document.getElementById('description').value.trim();
+            dupSeq++;
+            clearDuplicateUI();
         }
  
         async function supportExisting() {
@@ -524,8 +604,10 @@
         function resetUserForm() {
             document.getElementById('problemForm').reset();
             document.getElementById('aiPreviewBox').classList.add('hidden');
-            currentDuplicate = null;
-            runDuplicateCheck();
+            clearTimeout(dupTimer);
+            dupSeq++;
+            dismissedFor = null;
+            clearDuplicateUI();
         }
  
         /* ---------- Naviqasiya / Auth ---------- */
@@ -616,9 +698,13 @@
         async function submitProblem(e) {
             e.preventDefault();
  
-            // Göndərmədən əvvəl son dublikat yoxlanışı
-            const dup = runDuplicateCheck();
-            if (dup) {
+            // Bütün xanaların dolu və düzgün olduğunu yoxla
+            if (!validateForm()) return;
+ 
+            // Göndərmədən əvvəl son dublikat yoxlanışı (gözləyən yoxlama varsa dərhal icra et)
+            clearTimeout(dupTimer);
+            await doDuplicateCheck();
+            if (currentDuplicate) {
                 document.getElementById('duplicateBox').scrollIntoView({ behavior: 'smooth', block: 'center' });
                 return;
             }
@@ -653,14 +739,28 @@
                 problemsCache = [];
                 snapshot.forEach((docSnap) => problemsCache.push({ id: docSnap.id, ...docSnap.data() }));
                 renderAdminView();
-                // İstifadəçi formu açıqdırsa, dublikat vəziyyətini yenilə
+                // İstifadəçi formu doludursa, dublikat vəziyyətini yenilə
                 if (document.getElementById('description')) runDuplicateCheck();
             });
         }
  
-        async function updateStatus(id, newStatus) {
+        // Azərbaycan dilində sıra sayı: 3 → "3-cü", 302 → "302-ci", 6 → "6-cı"
+        function ordinal(v) {
+            const x = String(v ?? '').trim();
+            if (!/^\d+$/.test(x)) return esc(x);   // köhnə mətn qeydləri olduğu kimi göstərilir
+            const n = parseInt(x, 10);
+            let suffix;
+            if (n % 1000 === 0)      suffix = 'ci';
+            else if (n % 100 === 0)  suffix = 'cü';
+            else if (n % 10 === 0)   suffix = { 1:'cu', 2:'ci', 3:'cu', 4:'cı', 5:'ci', 6:'cı', 7:'ci', 8:'ci', 9:'cı' }[(n / 10) % 10];
+            else                     suffix = { 1:'ci', 2:'ci', 3:'cü', 4:'cü', 5:'ci', 6:'cı', 7:'ci', 8:'ci', 9:'cu' }[n % 10];
+            return `${n}-${suffix}`;
+        }
+ 
+        // "Həll olundu" düyməsi: status dəyişir və problem siyahıdan çıxır
+        async function resolveProblem(id) {
             try {
-                await window.updateDoc(window.doc(window.db, "problems", id), { status: newStatus });
+                await window.updateDoc(window.doc(window.db, "problems", id), { status: 'Həll edildi' });
             } catch (err) { console.error(err); }
         }
  
@@ -681,30 +781,25 @@
             document.getElementById('stat-resolved').innerText = problemsCache.filter(p => !isActive(p)).length;
  
             const tbody = document.getElementById('adminTableBody');
-            if (problemsCache.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-xs text-slate-400">Sistemdə problem yoxdur.</td></tr>`;
+            const activeList = problemsCache.filter(isActive);   // həll olunanlar göstərilmir
+ 
+            if (activeList.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="p-6 text-center text-xs text-slate-400">Aktiv problem yoxdur.</td></tr>`;
                 return;
             }
  
-            const statuses = ['Yeni', 'Qəbul edildi', 'İcra olunur', 'Həll edildi', 'Bağlandı'];
-            tbody.innerHTML = problemsCache.map(p => `
+            tbody.innerHTML = activeList.map(p => `
                 <tr class="hover:bg-slate-50/80 transition">
                     <td class="p-4">
-                        <p class="font-bold text-slate-900">${esc(p.room)}</p>
-                        <p class="text-[11px] text-slate-500">${esc(p.building)} · ${esc(p.floor)}</p>
+                        <p class="font-bold text-slate-900 whitespace-nowrap">${esc(p.building)} / ${ordinal(p.floor)} mərtəbə / ${ordinal(p.room)} otaq</p>
                     </td>
                     <td class="p-4 text-slate-700">${esc(p.senderName)}</td>
                     <td class="p-4 text-slate-600 max-w-xs truncate" title="${esc(p.description)}">${esc(p.description)}</td>
                     <td class="p-4"><span class="text-xs font-medium text-slate-800">${esc(p.category)}</span></td>
-                    <td class="p-4 text-center">
-                        <span class="inline-flex items-center gap-1 text-xs font-semibold ${(p.reportsCount || 1) > 1 ? 'bg-orange-100 text-orange-700' : 'bg-slate-100 text-slate-600'} px-2 py-0.5 rounded-full">
-                            <i class="fa-solid fa-users text-[10px]"></i> ${p.reportsCount || 1}
-                        </span>
-                    </td>
                     <td class="p-4">
-                        <select onchange="updateStatus('${esc(p.id)}', this.value)" class="text-xs bg-slate-50 border border-slate-300 rounded-lg px-2 py-1 focus:outline-none">
-                            ${statuses.map(s => `<option value="${s}" ${p.status === s ? 'selected' : ''}>${s}</option>`).join('')}
-                        </select>
+                        <button onclick="resolveProblem('${esc(p.id)}')" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-xs font-semibold px-3 py-1.5 rounded-lg transition whitespace-nowrap">
+                            <i class="fa-solid fa-check mr-1"></i> Həll olundu
+                        </button>
                     </td>
                     <td class="p-4 text-right">
                         <button onclick="deleteProblem('${esc(p.id)}')" class="text-rose-500 hover:text-rose-700 text-xs px-2 py-1 rounded transition" title="Sil"><i class="fa-solid fa-trash"></i></button>
@@ -715,4 +810,3 @@
     </script>
 </body>
 </html>
- 
