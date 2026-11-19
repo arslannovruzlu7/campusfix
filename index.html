@@ -69,10 +69,19 @@
             transition: opacity .8s ease, transform .8s cubic-bezier(.22,1,.36,1);
         }
         body.site-ready .enter-up { transition-delay: .25s; }
+
+        /* ---------- İzləmə: cari mərhələ nöqtəsi ---------- */
+        .pulse-dot { animation: pulseDot 1.8s ease-in-out infinite; }
+        @keyframes pulseDot { 0%,100% { box-shadow: 0 0 0 0 rgba(79,70,229,.45); } 50% { box-shadow: 0 0 0 7px rgba(79,70,229,0); } }
+
+        /* ---------- Analitika: sütun diaqramı ---------- */
+        .bar-col { transition: height .6s cubic-bezier(.22,1,.36,1); }
  
         @media (prefers-reduced-motion: reduce) {
             #splash, #splash * { animation-duration: .01ms !important; animation-delay: 0s !important; transition-duration: .01ms !important; }
             .enter-down, .enter-up { opacity: 1; transform: none; }
+            .pulse-dot { animation: none; }
+            .bar-col { transition: none; }
         }
     </style>
 </head>
@@ -99,6 +108,30 @@
                     <p class="text-xs text-indigo-200">Problemdən həllə qədər.</p>
                 </div>
             </div>
+            <div class="flex items-center gap-2">
+                <!-- Bildirişlər zəngi -->
+                <div class="relative" id="notifWrapper">
+                    <button type="button" onclick="toggleNotifMenu()" id="notifBtn"
+                            class="relative bg-indigo-900/60 hover:bg-indigo-900/80 text-white p-2.5 rounded-xl border border-indigo-500/35 transition"
+                            aria-label="Bildirişlər">
+                        <i class="fa-solid fa-bell text-sm"></i>
+                        <span id="notifBadge" class="hidden absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center shadow">0</span>
+                    </button>
+
+                    <div id="notifDropdown"
+                         class="hidden fixed sm:absolute right-4 sm:right-0 mt-2 w-80 max-w-[calc(100vw-2rem)] bg-white text-slate-800 rounded-2xl shadow-xl border border-slate-200 z-[70] overflow-hidden">
+                        <div class="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+                            <span class="text-xs font-bold text-slate-900">Bildirişlər</span>
+                            <button type="button" onclick="clearNotifications()"
+                                    class="text-xs font-semibold text-rose-600 hover:text-rose-700 hover:underline">
+                                Təmizlə
+                            </button>
+                        </div>
+                        <div id="notifList" class="max-h-72 overflow-y-auto divide-y divide-slate-100 text-xs">
+                            <p class="p-4 text-center text-slate-400">Yeni bildiriş yoxdur.</p>
+                        </div>
+                    </div>
+                </div>
             <div class="bg-indigo-900/60 p-1 rounded-xl flex gap-1 border border-indigo-500/35">
                 <button onclick="switchRole('user')" id="btn-role-user" class="px-4 py-1.5 rounded-lg text-sm font-medium transition-all bg-white text-indigo-700 shadow">
                     <i class="fa-solid fa-user mr-1.5"></i> İstifadəçi
@@ -107,6 +140,7 @@
                     <i class="fa-solid fa-user-shield mr-1.5"></i> Admin Paneli
                 </button>
             </div>
+        </div>
         </div>
     </header>
  
@@ -166,6 +200,26 @@
                         </div>
                         <span class="text-[10px] bg-indigo-200/60 px-2 py-0.5 rounded font-medium text-indigo-800">Avtomatik Təyin Edildi</span>
                     </div>
+
+                    <!-- Təhlükə xəbərdarlığı -->
+                    <div id="safetyBox" class="hidden bg-rose-50 border border-rose-300 rounded-xl p-4 text-xs text-rose-900 space-y-3">
+                        <div class="flex items-start gap-2">
+                            <i class="fa-solid fa-triangle-exclamation text-rose-600 mt-0.5"></i>
+                            <p><strong>Təhlükəli hal aşkarlandı: <span id="safetyLabel"></span>.</strong>
+                               Dərhal texniki xidmətə zəng edin: <strong id="safetyContact"></strong><span id="safetyCall"></span></p>
+                        </div>
+                        <div class="pl-6">
+                            <p class="font-semibold mb-1">Təhlükəsiz ilkin addımlar:</p>
+                            <ol id="safetySteps" class="list-decimal pl-4 space-y-0.5"></ol>
+                        </div>
+                        <p class="pl-6 text-[11px] text-rose-700">Təhlükəli özbaşına müdaxilə (təmir, söndürmə, açma-bağlama) məsləhət görülmür. Mütəxəssisi gözləyin.</p>
+                    </div>
+
+                    <!-- Əvvəlki müraciətlər -->
+                    <div id="historyInfo" class="hidden bg-slate-100 border border-slate-200 rounded-xl p-3 text-xs text-slate-700 flex items-center gap-2">
+                        <i class="fa-solid fa-clock-rotate-left text-slate-500"></i>
+                        <span id="historyText"></span>
+                    </div>
  
                     <!-- Sİ yoxlanış göstəricisi -->
                     <div id="dupChecking" class="hidden text-[11px] text-slate-500 flex items-center gap-2">
@@ -194,7 +248,7 @@
  
                     <div>
                         <label class="block text-xs font-semibold text-slate-700 mb-1">Şöbə (Kateqoriya)</label>
-                        <select id="category" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <select id="category" onchange="runDuplicateCheck()" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
                             <option value="Texniki Nasazlıq"> Texniki şöbə</option>
                             <option value="İT Problemi"> İT şöbəsi</option>
                             <option value="Kitabxana"> Kitabxana</option>
@@ -202,11 +256,53 @@
                             <option value="Digər"> Digər</option>
                         </select>
                     </div>
+
+                    <!-- Təcililik səviyyəsi -->
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Təcililik səviyyəsi</label>
+                        <select id="priority" onchange="onPriorityManual()" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-70 disabled:cursor-not-allowed">
+                            <option value="Kritik">Kritik</option>
+                            <option value="Yüksək">Yüksək</option>
+                            <option value="Orta" selected>Orta</option>
+                            <option value="Aşağı">Aşağı</option>
+                        </select>
+                        <p id="priorityNote" class="text-[11px] text-slate-500 mt-1"></p>
+                    </div>
  
                     <button type="submit" id="submitBtn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-3 rounded-xl transition shadow-md shadow-indigo-100 flex items-center justify-center gap-2">
                         <i class="fa-solid fa-paper-plane"></i> Problemi Göndər
                     </button>
                 </form>
+            </div>
+
+            <!-- MÜRACİƏTİN İZLƏNMƏSİ -->
+            <div id="trackCard" class="max-w-2xl mx-auto bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sm:p-8">
+                <div class="mb-4 border-b pb-4">
+                    <h2 class="text-lg font-bold text-slate-900">Müraciətin İzlənməsi</h2>
+                    <p class="text-xs text-slate-500">Müraciət nömrəsini daxil edin, hazırkı vəziyyətini görün.</p>
+                </div>
+                <form onsubmit="trackSearch(event)" class="flex gap-2" novalidate>
+                    <input type="text" id="trackInput" maxlength="20" autocomplete="off" spellcheck="false"
+                           oninput="this.value = this.value.toUpperCase()"
+                           placeholder="Məs: CF-2611-0001"
+                           class="flex-1 min-w-0 bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-mono tracking-wide focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 rounded-xl transition flex items-center gap-2 whitespace-nowrap">
+                        <i class="fa-solid fa-magnifying-glass"></i> Axtar
+                    </button>
+                </form>
+                <p id="trackError" class="hidden mt-3 text-xs text-rose-600 flex items-center gap-1.5">
+                    <i class="fa-solid fa-circle-exclamation"></i><span id="trackErrorText"></span>
+                </p>
+                <div id="trackResult" class="mt-5"></div>
+            </div>
+
+            <!-- MƏNİM MÜRACİƏTLƏRİM -->
+            <div class="max-w-2xl mx-auto bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sm:p-8">
+                <div class="mb-4 border-b pb-4">
+                    <h2 class="text-lg font-bold text-slate-900">Mənim müraciətlərim</h2>
+                    <p class="text-xs text-slate-500">Bu cihazdan göndərdiyiniz və ya dəstək verdiyiniz müraciətlər.</p>
+                </div>
+                <div id="myList" class="space-y-2"></div>
             </div>
         </section>
  
@@ -257,43 +353,158 @@
                         <label class="block text-xs font-semibold text-slate-700 mb-1">Şifrə Təyin Et</label>
                         <input type="password" id="regPassword" required placeholder="••••••••" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
                     </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Admin kodu</label>
+                        <input type="password" id="regAdminCode" required autocomplete="off" placeholder="Qeydiyyat üçün xüsusi kod" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <p class="text-[11px] text-slate-400 mt-1">Admin hesabı yalnız xüsusi koda sahib şəxslər tərəfindən yaradıla bilər.</p>
+                    </div>
                     <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-3 rounded-xl transition text-sm">Qeydiyyatdan Keç</button>
                 </form>
             </div>
  
             <div id="adminDashboard" class="space-y-6 hidden">
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-                        <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Ümumi Problemlər</p>
+                <!-- Aktiv kritik xəbərdarlıq banneri -->
+                <div id="adminCriticalBanner" class="hidden bg-rose-600 text-white rounded-2xl p-4 shadow-md flex items-center justify-between gap-3 animate-pulse">
+                    <div class="flex items-center gap-3">
+                        <i class="fa-solid fa-triangle-exclamation text-xl"></i>
+                        <div>
+                            <p class="text-sm font-bold">Diqqət! Aktiv kritik müraciətlər var!</p>
+                            <p class="text-xs text-rose-100">Hazırda <strong id="bannerCriticalCount">0</strong> kritik müraciət təcili müdaxilə gözləyir.</p>
+                        </div>
+                    </div>
+                    <button type="button" onclick="setAdminFilter('active')" class="bg-white text-rose-700 text-xs font-bold px-3 py-1.5 rounded-lg hover:bg-rose-50 transition whitespace-nowrap">
+                        Göstər
+                    </button>
+                </div>
+
+                <!-- 5 Statistika kartı -->
+                <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 sm:gap-4">
+                    <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm">
+                        <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Ümumi</p>
                         <h3 id="stat-total" class="text-2xl font-bold text-slate-900 mt-1">0</h3>
                     </div>
-                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-                        <p class="text-xs font-semibold text-amber-500 uppercase tracking-wider">Açıq / Gözləyən</p>
+                    <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm">
+                        <p class="text-[11px] font-semibold text-amber-500 uppercase tracking-wider">Açıq / Gözləyən</p>
                         <h3 id="stat-open" class="text-2xl font-bold text-amber-600 mt-1">0</h3>
                     </div>
-                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-                        <p class="text-xs font-semibold text-emerald-500 uppercase tracking-wider">Həll Olunan</p>
+                    <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm">
+                        <p class="text-[11px] font-semibold text-emerald-500 uppercase tracking-wider">Həll Olunan</p>
                         <h3 id="stat-resolved" class="text-2xl font-bold text-emerald-600 mt-1">0</h3>
                     </div>
+                    <div class="bg-white p-4 sm:p-5 rounded-2xl border border-rose-200 bg-rose-50/40 shadow-sm">
+                        <p class="text-[11px] font-semibold text-rose-600 uppercase tracking-wider">Kritik (Aktiv)</p>
+                        <h3 id="stat-critical" class="text-2xl font-bold text-rose-600 mt-1">0</h3>
+                    </div>
+                    <div class="col-span-2 sm:col-span-1 bg-white p-4 sm:p-5 rounded-2xl border border-orange-200 bg-orange-50/40 shadow-sm">
+                        <p class="text-[11px] font-semibold text-orange-600 uppercase tracking-wider">Gecikmiş</p>
+                        <h3 id="stat-overdue" class="text-2xl font-bold text-orange-600 mt-1">0</h3>
+                    </div>
                 </div>
+
+                <!-- ========== ANALİTİKA BÖLMƏSİ ========== -->
+                <div id="analyticsSection" class="space-y-4">
+                    <div class="flex items-center gap-2">
+                        <div class="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                            <i class="fa-solid fa-chart-column"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-lg font-bold text-slate-900">Analitika</h2>
+                            <p class="text-xs text-slate-500">Müraciətlərin ümumi göstəriciləri və tendensiyaları.</p>
+                        </div>
+                    </div>
+
+                    <!-- Orta həll müddəti + Vaxtında həll faizi -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                            <div class="flex items-center gap-2 text-[11px] font-semibold text-indigo-600 uppercase tracking-wider">
+                                <i class="fa-solid fa-hourglass-half"></i> Orta həll müddəti
+                            </div>
+                            <h3 id="an-avgTime" class="text-2xl font-bold text-slate-900 mt-1">—</h3>
+                            <p id="an-avgTimeNote" class="text-[11px] text-slate-400 mt-1"></p>
+                        </div>
+                        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                            <div class="flex items-center gap-2 text-[11px] font-semibold text-emerald-600 uppercase tracking-wider">
+                                <i class="fa-solid fa-circle-check"></i> Vaxtında həll faizi
+                            </div>
+                            <h3 id="an-onTime" class="text-2xl font-bold text-slate-900 mt-1">—</h3>
+                            <div class="h-2 rounded-full bg-slate-100 mt-2 overflow-hidden">
+                                <div id="an-onTimeBar" class="h-full bg-emerald-500 rounded-full" style="width:0%"></div>
+                            </div>
+                            <p id="an-onTimeNote" class="text-[11px] text-slate-400 mt-1"></p>
+                        </div>
+                    </div>
+
+                    <!-- Son 6 ay sütun diaqramı -->
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-sm font-bold text-slate-900">Son 6 ay üzrə müraciətlər</h3>
+                            <span id="an-monthTotal" class="text-[11px] font-semibold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full"></span>
+                        </div>
+                        <div id="an-monthChart" class="flex items-end justify-between gap-2 sm:gap-4 h-44"></div>
+                    </div>
+
+                    <!-- Şöbələr və təcililik üzrə bölgü -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
+                        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                            <h3 class="text-sm font-bold text-slate-900 mb-3">Şöbələr üzrə bölgü</h3>
+                            <div id="an-byDept" class="space-y-2.5"></div>
+                        </div>
+                        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                            <h3 class="text-sm font-bold text-slate-900 mb-3">Təcililik üzrə bölgü</h3>
+                            <div id="an-byPriority" class="space-y-2.5"></div>
+                        </div>
+                    </div>
+
+                    <!-- Ən problemli otaqlar və binalar -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
+                        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                            <h3 class="text-sm font-bold text-slate-900 mb-3"><i class="fa-solid fa-door-open text-rose-500 mr-1.5"></i>Ən çox problemli ilk 5 otaq</h3>
+                            <div id="an-topRooms" class="space-y-2.5"></div>
+                        </div>
+                        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                            <h3 class="text-sm font-bold text-slate-900 mb-3"><i class="fa-solid fa-building text-orange-500 mr-1.5"></i>Ən çox problemli ilk 5 bina</h3>
+                            <div id="an-topBuildings" class="space-y-2.5"></div>
+                        </div>
+                    </div>
+
+                    <!-- Təkrar problemlər -->
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="text-sm font-bold text-slate-900"><i class="fa-solid fa-rotate text-amber-500 mr-1.5"></i>Təkrar problemlər</h3>
+                            <span class="text-[11px] text-slate-400">Eyni məkan və kateqoriyada 2 və daha çox dəfə</span>
+                        </div>
+                        <div id="an-repeats" class="divide-y divide-slate-100 text-xs"></div>
+                    </div>
+                </div>
+                <!-- ========== /ANALİTİKA ========== -->
  
                 <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                    <div class="p-5 border-b border-slate-200 flex justify-between items-center">
+                    <div class="p-5 border-b border-slate-200 flex flex-col sm:flex-row justify-between sm:items-center gap-3">
                         <div>
                             <h2 class="text-lg font-bold text-slate-900">Admin İdarəetmə Paneli</h2>
-                            <p class="text-xs text-slate-500">Daxil olan müraciətlər, status dəyişiklikləri və silmə əməliyyatları.</p>
+                            <p class="text-xs text-slate-500">Təciliyə və tarixə görə sıralanmış müraciətlər, təyinat və status idarəetməsi.</p>
                         </div>
-                        <button onclick="logoutAdmin()" class="text-xs text-rose-600 font-semibold hover:underline"><i class="fa-solid fa-arrow-right-from-bracket mr-1"></i> Çıxış</button>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <!-- Filtr düymələri -->
+                            <div class="bg-slate-100 p-1 rounded-xl flex gap-1 text-xs font-semibold">
+                                <button type="button" id="filter-active" onclick="setAdminFilter('active')" class="px-3 py-1.5 rounded-lg bg-white text-indigo-700 shadow-sm transition">Aktiv olanlar</button>
+                                <button type="button" id="filter-all" onclick="setAdminFilter('all')" class="px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition">Hamısı</button>
+                                <button type="button" id="filter-closed" onclick="setAdminFilter('closed')" class="px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition">Həll olunmuş/bağlanmış</button>
+                            </div>
+                            <button onclick="openLogoutModal()" class="text-xs text-rose-600 font-semibold hover:underline ml-2"><i class="fa-solid fa-arrow-right-from-bracket mr-1"></i> Çıxış</button>
+                        </div>
                     </div>
                     <div class="overflow-x-auto">
                         <table class="w-full text-left border-collapse text-sm">
                             <thead>
                                 <tr class="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-600 uppercase">
+                                    <th class="p-4">Nömrə</th>
                                     <th class="p-4">Məkan</th>
                                     <th class="p-4">Göndərən</th>
                                     <th class="p-4">Təsvir</th>
-                                    <th class="p-4">Kateqoriya</th>
+                                    <th class="p-4">Kateqoriya / Prioritet</th>
                                     <th class="p-4">Status</th>
+                                    <th class="p-4">Məsul / Şöbə / Plan</th>
                                     <th class="p-4 text-right">Əməliyyat</th>
                                 </tr>
                             </thead>
@@ -304,12 +515,149 @@
             </div>
         </section>
     </main>
+
+    <!-- Admin: müraciəti idarə et (modal) -->
+    <!-- Admin: Təyinat və Detal Pəncərəsi -->
+    <div id="manageModal" class="hidden fixed inset-0 z-[60] bg-slate-900/50 flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl p-6 space-y-5 my-8 max-h-[90vh] overflow-y-auto">
+            <div class="flex items-start justify-between border-b border-slate-100 pb-3">
+                <div>
+                    <div class="flex items-center gap-2">
+                        <h3 class="text-base font-bold text-slate-900">Müraciət Detalları və Təyinat</h3>
+                        <span id="manageTicket" class="text-xs font-mono font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded"></span>
+                    </div>
+                    <p id="manageMeta" class="text-xs text-slate-500 mt-1"></p>
+                </div>
+                <button type="button" onclick="closeManage()" class="text-slate-400 hover:text-slate-700 p-1" aria-label="Bağla"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+
+            <!-- Neçə nəfər bildirib + Təsvir -->
+            <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-2 text-xs">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                    <span class="font-semibold text-slate-700">Problemin təsviri:</span>
+                    <span class="inline-flex items-center gap-1.5 bg-indigo-100 text-indigo-800 font-semibold px-2.5 py-0.5 rounded-full">
+                        <i class="fa-solid fa-users"></i> <span id="manageReportsCount">1</span> nəfər bildirib
+                    </span>
+                </div>
+                <p id="manageDescription" class="text-slate-700 leading-relaxed"></p>
+            </div>
+
+            <!-- Sİ-nin təklif etdiyi ilkin həll addımları -->
+            <div id="manageAiStepsBox" class="bg-indigo-50/70 border border-indigo-100 rounded-xl p-3.5 text-xs text-indigo-950 space-y-1.5">
+                <p class="font-semibold text-indigo-800 flex items-center gap-1.5">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i> Sİ-nin təklif etdiyi həll addımları:
+                </p>
+                <ol id="manageAiStepsList" class="list-decimal pl-5 space-y-1 text-indigo-900"></ol>
+            </div>
+
+            <!-- Təyinat və Status Forması -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Prioritet (standart müddət)</label>
+                    <select id="managePriority" onchange="onManagePriorityChange()" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <option value="Kritik">Kritik (1 gün)</option>
+                        <option value="Yüksək">Yüksək (3 gün)</option>
+                        <option value="Orta">Orta (7 gün)</option>
+                        <option value="Aşağı">Aşağı (14 gün)</option>
+                    </select>
+                    <p id="managePriorityBy" class="text-[11px] text-slate-500 mt-1"></p>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Status (6 mərhələ)</label>
+                    <select id="manageStatus" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <option value="Yeni müraciət">Yeni müraciət</option>
+                        <option value="Qəbul edildi">Qəbul edildi</option>
+                        <option value="Baxılır">Baxılır</option>
+                        <option value="Həll prosesi gedir">Həll prosesi gedir</option>
+                        <option value="Həll edildi">Həll edildi</option>
+                        <option value="Bağlandı">Bağlandı</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Məsul əməkdaşın adı</label>
+                    <input type="text" id="manageAssignee" list="assigneeSuggestions" oninput="onManageAssigneeInput()" placeholder="Məs: Rəşad Əliyev" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <datalist id="assigneeSuggestions"></datalist>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Məsul şöbə</label>
+                    <select id="manageDept" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <option value="Texniki Nasazlıq">Texniki şöbə</option>
+                        <option value="İT Problemi">İT şöbəsi</option>
+                        <option value="Kitabxana">Kitabxana</option>
+                        <option value="İnsan Resursları">İnsan Resursları</option>
+                        <option value="Digər">Digər</option>
+                    </select>
+                </div>
+                <div class="sm:col-span-2">
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">İcra müddəti (tarix və vaxt)</label>
+                    <input type="datetime-local" id="managePlanned" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+            </div>
+
+            <!-- Status tarixçəsi -->
+            <div class="border-t border-slate-100 pt-3">
+                <p class="text-xs font-semibold text-slate-700 mb-2">Status tarixçəsi</p>
+                <ul id="manageHistoryList" class="space-y-1.5 max-h-36 overflow-y-auto text-xs bg-slate-50 p-3 rounded-xl border border-slate-200"></ul>
+            </div>
+
+            <div class="flex gap-2 pt-2 border-t border-slate-100">
+                <button type="button" onclick="closeManage()" class="flex-1 border border-slate-300 text-slate-700 text-sm font-medium py-2.5 rounded-xl hover:bg-slate-50 transition">Ləğv et</button>
+                <button type="button" onclick="saveManage()" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium py-2.5 rounded-xl transition">Yadda saxla</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin: Silmə Təsdiq Pəncərəsi -->
+    <div id="deleteConfirmModal" class="hidden fixed inset-0 z-[70] bg-slate-900/50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4">
+            <div class="flex items-center gap-3 text-rose-600">
+                <div class="w-10 h-10 rounded-xl bg-rose-50 flex items-center justify-center text-lg">
+                    <i class="fa-solid fa-trash-can"></i>
+                </div>
+                <div>
+                    <h3 class="text-base font-bold text-slate-900">Müraciəti silmək</h3>
+                    <p id="deleteConfirmTicket" class="text-xs font-mono text-slate-500"></p>
+                </div>
+            </div>
+            <p class="text-xs text-slate-600 leading-relaxed">Bu müraciəti sistemdən birdəfəlik silmək istədiyinizə əminsinizmi? Bu əməliyyat geri qaytarıla bilməz.</p>
+            <div class="flex gap-2 pt-1">
+                <button type="button" onclick="closeDeleteModal()" class="flex-1 border border-slate-300 text-slate-700 text-xs font-semibold py-2.5 rounded-xl hover:bg-slate-50 transition">Ləğv et</button>
+                <button type="button" onclick="confirmDeleteProblem()" class="flex-1 bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold py-2.5 rounded-xl transition">Bəli, sil</button>
+            </div>
+        </div>
+    </div>
  
+    <!-- Admin: Çıxış üçün şifrə təsdiqi -->
+    <div id="logoutModal" class="hidden fixed inset-0 z-[70] bg-slate-900/50 flex items-center justify-center p-4">
+        <form onsubmit="confirmLogout(event)" class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4" novalidate>
+            <div class="flex items-center gap-3 text-indigo-600">
+                <div class="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center text-lg">
+                    <i class="fa-solid fa-key"></i>
+                </div>
+                <div>
+                    <h3 class="text-base font-bold text-slate-900">Çıxışı təsdiqləyin</h3>
+                    <p id="logoutEmail" class="text-xs text-slate-500 break-all"></p>
+                </div>
+            </div>
+            <p class="text-xs text-slate-600 leading-relaxed">Admin hesabından çıxmaq üçün qeydiyyat zamanı təyin etdiyiniz şifrəni daxil edin.</p>
+            <div id="logoutErrorBox" class="hidden bg-rose-50 border border-rose-200 text-rose-700 text-xs p-3 rounded-xl flex items-center gap-2">
+                <i class="fa-solid fa-circle-exclamation"></i>
+                <span id="logoutErrorText"></span>
+            </div>
+            <input type="password" id="logoutPassword" autocomplete="current-password" placeholder="••••••••"
+                   class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <div class="flex gap-2 pt-1">
+                <button type="button" onclick="closeLogoutModal()" class="flex-1 border border-slate-300 text-slate-700 text-xs font-semibold py-2.5 rounded-xl hover:bg-slate-50 transition">Ləğv et</button>
+                <button type="submit" id="logoutConfirmBtn" class="flex-1 bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold py-2.5 rounded-xl transition">Çıxış et</button>
+            </div>
+        </form>
+    </div>
+
     <!-- Firebase -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
         import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, doc, updateDoc, deleteDoc, onSnapshot, query, increment } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, doc, updateDoc, deleteDoc, onSnapshot, query, increment, runTransaction, arrayUnion } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
  
         const firebaseConfig = {
             apiKey: "AIzaSyDvPV3aG3tc1lH4V33EAmLjPr4dUS_PD-Y",
@@ -338,6 +686,8 @@
         window.onSnapshot = onSnapshot;
         window.query = query;
         window.increment = increment;
+        window.runTransaction = runTransaction;
+        window.arrayUnion = arrayUnion;
  
         onAuthStateChanged(auth, (user) => {
             if (user) {
@@ -390,11 +740,136 @@
         })();
  
         let problemsCache = [];
+        let cacheLoaded = false;
         let currentDuplicate = null;   // hazırda tapılmış oxşar problem
         let successTimer = null;
+        let trackedNo = null;          // hazırda izlənən müraciət nömrəsi
+        let manageId = null;           // admin modalında açıq olan müraciət
+        const localTickets = {};       // yeni göndərilən, hələ snapshot-a düşməyən müraciətlər
+
+        const NOTIF_KEY = 'campusfix_notifications';
+        let notifInitialized = false;
+        const prevProblemState = new Map();
+
+        function getNotifications() {
+            try { return JSON.parse(localStorage.getItem(NOTIF_KEY) || '[]'); } catch { return []; }
+        }
+
+        function saveNotifications(list) {
+            try { localStorage.setItem(NOTIF_KEY, JSON.stringify(list.slice(0, 50))); } catch {}
+            renderNotifications();
+        }
+
+        function addNotification(ticketNo, text) {
+            const list = getNotifications();
+            list.unshift({
+                id: Date.now() + '-' + Math.random().toString(36).slice(2, 7),
+                ticketNo: ticketNo || '',
+                text,
+                time: fmtDT(Date.now()),
+                read: false
+            });
+            saveNotifications(list);
+        }
+
+        function clearNotifications() {
+            saveNotifications([]);
+        }
+
+        function markAllNotificationsRead() {
+            const list = getNotifications().map(n => ({ ...n, read: true }));
+            saveNotifications(list);
+        }
+
+        function toggleNotifMenu() {
+            const dd = document.getElementById('notifDropdown');
+            if (!dd) return;
+            const willOpen = dd.classList.contains('hidden');
+            dd.classList.toggle('hidden', !willOpen);
+            if (willOpen) markAllNotificationsRead();
+        }
+
+        function openNotifTicket(ticketNo) {
+            const dd = document.getElementById('notifDropdown');
+            if (dd) dd.classList.add('hidden');
+            if (!ticketNo) return;
+            switchRole('user');
+            openTracking(ticketNo, true);
+        }
+
+        function renderNotifications() {
+            const badge = document.getElementById('notifBadge');
+            const listEl = document.getElementById('notifList');
+            if (!badge || !listEl) return;
+
+            const list = getNotifications();
+            const unread = list.filter(n => !n.read).length;
+
+            if (unread > 0) {
+                badge.innerText = unread > 99 ? '99+' : String(unread);
+                badge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
+            }
+
+            if (!list.length) {
+                listEl.innerHTML = '<p class="p-4 text-center text-slate-400">Yeni bildiriş yoxdur.</p>';
+                return;
+            }
+
+            listEl.innerHTML = list.map(n => `
+                <button type="button" onclick="openNotifTicket('${esc(n.ticketNo)}')"
+                        class="w-full text-left p-3.5 hover:bg-slate-50 transition flex flex-col gap-1 ${n.read ? 'bg-white' : 'bg-indigo-50/50'}">
+                    <div class="flex items-center justify-between gap-2">
+                        <span class="font-mono text-[11px] font-bold text-indigo-700">${esc(n.ticketNo || 'Müraciət')}</span>
+                        <span class="text-[10px] text-slate-400">${esc(n.time)}</span>
+                    </div>
+                    <p class="text-slate-700 leading-snug">${esc(n.text)}</p>
+                </button>
+            `).join('');
+        }
+
+        document.addEventListener('click', (e) => {
+            const wrapper = document.getElementById('notifWrapper');
+            const dd = document.getElementById('notifDropdown');
+            if (wrapper && dd && !wrapper.contains(e.target)) {
+                dd.classList.add('hidden');
+            }
+        });
  
+        const BASE_TITLE = 'CampusFix - Kampus Problemlərinin İdarə Edilməsi';
         const CLOSED_STATUSES = ['Həll edildi', 'Bağlandı'];
         const isActive = (p) => !CLOSED_STATUSES.includes(p.status);
+
+        const ALL_STATUSES = ['Yeni müraciət', 'Qəbul edildi', 'Baxılır', 'Həll prosesi gedir', 'Həll edildi', 'Bağlandı'];
+        const STAGES = ['Yeni müraciət', 'Qəbul edildi', 'Baxılır', 'Həll prosesi gedir', 'Həll edildi', 'Bağlandı'];
+        const STAGE_LABELS = ['Yeni müraciət', 'Qəbul edildi', 'Baxılır', 'Həll prosesi gedir', 'Həll edildi', 'Bağlandı'];
+        const PRIORITY_DAYS = { 'Kritik': 1, 'Yüksək': 3, 'Orta': 7, 'Aşağı': 14 };
+
+        const STATUS_STYLE = {
+            'Yeni':               'bg-slate-100 text-slate-700 border-slate-200',
+            'Yeni müraciət':      'bg-slate-100 text-slate-700 border-slate-200',
+            'Qəbul edildi':       'bg-sky-50 text-sky-700 border-sky-200',
+            'Baxılır':            'bg-indigo-50 text-indigo-700 border-indigo-200',
+            'İcrada':             'bg-amber-50 text-amber-700 border-amber-200',
+            'Həll prosesi gedir': 'bg-amber-50 text-amber-700 border-amber-200',
+            'Həll edildi':        'bg-emerald-50 text-emerald-700 border-emerald-200',
+            'Bağlandı':           'bg-teal-50 text-teal-700 border-teal-200'
+        };
+
+        let adminFilter = 'active';
+        let deleteTargetId = null;
+
+        function normalizeStatus(st) {
+            if (!st || st === 'Yeni') return 'Yeni müraciət';
+            if (st === 'İcrada') return 'Həll prosesi gedir';
+            return st;
+        }
+
+        function defaultDueMs(priority, baseMs = Date.now()) {
+            const days = PRIORITY_DAYS[priority] ?? 7;
+            return baseMs + days * 24 * 60 * 60 * 1000;
+        }
  
         /* ---------- Köməkçi funksiyalar ---------- */
         function esc(s) {
@@ -444,6 +919,105 @@
                 }
             }
             return true;
+        }
+
+        /* ---------- Tarix / vaxt köməkçiləri ---------- */
+        function fmtDT(ms) {
+            if (!ms) return '—';
+            return new Date(ms).toLocaleString('az-AZ', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+        }
+        // <input type="datetime-local"> üçün yerli vaxt formatı
+        function toLocalInput(ms) {
+            if (!ms) return '';
+            const d = new Date(ms), p = (n) => String(n).padStart(2, '0');
+            return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+        }
+        function lateText(ms) {
+            const mins = Math.max(1, Math.floor((Date.now() - ms) / 60000));
+            const days = Math.floor(mins / 1440), hours = Math.floor((mins % 1440) / 60);
+            if (days > 0) return `${days} gün${hours ? ' ' + hours + ' saat' : ''}`;
+            if (hours > 0) return `${hours} saat ${mins % 60} dəq`;
+            return `${mins} dəq`;
+        }
+        // Planlaşdırılan vaxt keçib, problem isə hələ həll olunmayıb
+        // Köhnə qeydlər (history / plannedDate) ilə uyğunluq üçün oxuyucular
+        function getHistory(p) {
+            if (Array.isArray(p.statusHistory) && p.statusHistory.length) return p.statusHistory;
+            return Array.isArray(p.history) ? p.history : [];
+        }
+        function getDue(p) {
+            if (Number.isFinite(p.dueDate)) return p.dueDate;
+            if (Number.isFinite(p.plannedDate)) return p.plannedDate;
+            return null;
+        }
+        function isOverdue(p) {
+            const due = getDue(p);
+            return isActive(p) && due !== null && Date.now() > due;
+        }
+        function stageIndex(status) {
+            const normSt = normalizeStatus(status);
+            const i = STAGES.indexOf(normSt);
+            return i === -1 ? 0 : i;
+        }
+        // Mərhələyə keçid vaxtı (tarixçədən); köhnə qeydlər üçün ilk mərhələdə createdAt
+        function stageTime(p, status, i) {
+            const h = getHistory(p).filter(x => x.status === status);
+            if (h.length) return fmtDT(h[h.length - 1].at);
+            if (i === 0) return p.createdAtMs ? fmtDT(p.createdAtMs) : (p.createdAt || null);
+            return null;
+        }
+        function statusBadge(p) {
+            const label = normalizeStatus(p.status);
+            const cls = STATUS_STYLE[label] || STATUS_STYLE['Yeni müraciət'];
+            return `<span class="inline-block text-[11px] font-semibold px-2 py-0.5 rounded-md border ${cls}">${esc(label)}</span>`;
+        }
+        function overdueBadge(p) {
+            return isOverdue(p)
+                ? `<span class="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-md border bg-rose-50 text-rose-700 border-rose-200"><i class="fa-solid fa-clock"></i> Gecikir</span>`
+                : '';
+        }
+
+        /* ---------- Müraciət nömrəsi: CF-YYAA-XXXX ---------- */
+        // Nömrə həm də sənədin ID-sidir. Transaksiya eyni ID-nin təkrarlanmasına imkan vermir.
+        async function createProblemWithTicket(data) {
+            const d = new Date();
+            const prefix = `CF-${String(d.getFullYear()).slice(-2)}${String(d.getMonth() + 1).padStart(2, '0')}-`;
+            let n = 1;
+            problemsCache.forEach(p => {
+                if (typeof p.ticketNo === 'string' && p.ticketNo.startsWith(prefix)) {
+                    const v = parseInt(p.ticketNo.slice(prefix.length), 10);
+                    if (Number.isFinite(v) && v >= n) n = v + 1;
+                }
+            });
+            for (let attempt = 0; attempt < 10; attempt++, n++) {
+                const ticketNo = prefix + String(n).padStart(4, '0');
+                const ref = window.doc(window.db, "problems", ticketNo);
+                try {
+                    await window.runTransaction(window.db, async (tx) => {
+                        const snap = await tx.get(ref);
+                        if (snap.exists()) throw new Error('TICKET_EXISTS');
+                        tx.set(ref, { ...data, ticketNo });
+                    });
+                    return ticketNo;
+                } catch (err) {
+                    if (err && err.message === 'TICKET_EXISTS') continue;   // növbəti nömrəni yoxla
+                    throw err;
+                }
+            }
+            throw new Error('Unikal nömrə yaradıla bilmədi');
+        }
+
+        /* ---------- "Mənim müraciətlərim" (brauzerdə saxlanılır) ---------- */
+        function getMine() {
+            try { return JSON.parse(localStorage.getItem('campusfix_mine') || '[]'); } catch { return []; }
+        }
+        function addMine(no) {
+            if (!no) return;
+            try {
+                const list = getMine().filter(x => x !== no);
+                list.unshift(no);
+                localStorage.setItem('campusfix_mine', JSON.stringify(list.slice(0, 50)));
+            } catch {}
         }
  
         /* ---------- Sİ (Cloudflare Worker vasitəsilə Gemini) ilə dublikat aşkarlanması ---------- */
@@ -502,6 +1076,7 @@ Yeni problem: ${description}`;
  
         // Hər düymə basılışında yox, 800 ms fasilədən sonra yoxlayır
         function runDuplicateCheck() {
+            updateHistoryInfo();
             clearTimeout(dupTimer);
             dupTimer = setTimeout(doDuplicateCheck, 800);
         }
@@ -576,31 +1151,40 @@ Yeni problem: ${description}`;
         async function supportExisting() {
             if (!currentDuplicate) return;
             const id = currentDuplicate.id;
+            const no = currentDuplicate.ticketNo;
             if (getSupported().includes(id)) return;
             try {
                 await window.updateDoc(window.doc(window.db, "problems", id), { reportsCount: window.increment(1) });
                 markSupported(id);
+                if (no) addMine(no);    // dəstək verilən müraciət də "Mənim müraciətlərim"də görünür
                 resetUserForm();
-                showSuccess("Mövcud problemə dəstəyiniz qeydə alındı. Təşəkkür edirik!");
+                renderMyList();
+                showSuccess(no
+                    ? `Mövcud problemə dəstəyiniz qeydə alındı. Müraciət nömrəsi: ${no}`
+                    : "Mövcud problemə dəstəyiniz qeydə alındı. Təşəkkür edirik!", false, 10000);
             } catch (err) {
                 console.error(err);
                 showSuccess("Dəstək göndərilərkən xəta baş verdi.", true);
             }
         }
  
-        function showSuccess(msg, isError = false) {
+        function showSuccess(msg, isError = false, ms = 6000) {
             const box = document.getElementById('successBox');
             box.className = "mb-4 text-xs p-3 rounded-xl flex items-center gap-2 border " +
                 (isError ? "bg-rose-50 border-rose-200 text-rose-700" : "bg-emerald-50 border-emerald-200 text-emerald-700");
             box.querySelector('i').className = isError ? "fa-solid fa-circle-exclamation" : "fa-solid fa-circle-check";
             document.getElementById('successText').innerText = msg;
             clearTimeout(successTimer);
-            successTimer = setTimeout(() => box.classList.add('hidden'), 6000);
+            successTimer = setTimeout(() => box.classList.add('hidden'), ms);
         }
  
         function resetUserForm() {
             document.getElementById('problemForm').reset();
             document.getElementById('aiPreviewBox').classList.add('hidden');
+            prioManual = false;
+            applyHazardUI([], '');
+            document.getElementById('priorityNote').innerText = '';
+            document.getElementById('historyInfo').classList.add('hidden');
             clearTimeout(dupTimer);
             dupSeq++;
             dismissedFor = null;
@@ -639,11 +1223,19 @@ Yeni problem: ${description}`;
             document.getElementById('authErrorBox').classList.add('hidden');
         }
  
+        // Admin qeydiyyatı üçün xüsusi kod. Təqdimatdan əvvəl öz kodunuzla əvəz edin.
+        const ADMIN_INVITE_CODE = 'CAMPUS-ADMIN-2026';
+
         async function handleRegister(e) {
             e.preventDefault();
             hideAuthError();
             const email = document.getElementById('regEmail').value;
             const password = document.getElementById('regPassword').value;
+            const code = document.getElementById('regAdminCode').value.trim();
+            if (code !== ADMIN_INVITE_CODE) {
+                showAuthError("Admin kodu yanlışdır. Qeydiyyat mümkün deyil.");
+                return;
+            }
             try {
                 await window.createUserWithEmailAndPassword(window.auth, email, password);
             } catch (err) {
@@ -668,6 +1260,56 @@ Yeni problem: ${description}`;
             }
         }
  
+        /* ---------- Çıxış: şifrə təsdiqi ---------- */
+        function openLogoutModal() {
+            const u = window.auth && window.auth.currentUser;
+            if (!u) return logoutAdmin();
+            document.getElementById('logoutEmail').innerText = u.email || '';
+            document.getElementById('logoutPassword').value = '';
+            document.getElementById('logoutErrorBox').classList.add('hidden');
+            document.getElementById('logoutModal').classList.remove('hidden');
+            setTimeout(() => document.getElementById('logoutPassword').focus(), 50);
+        }
+
+        function closeLogoutModal() {
+            document.getElementById('logoutModal').classList.add('hidden');
+            document.getElementById('logoutPassword').value = '';
+        }
+
+        function showLogoutError(msg) {
+            document.getElementById('logoutErrorText').innerText = msg;
+            document.getElementById('logoutErrorBox').classList.remove('hidden');
+        }
+
+        async function confirmLogout(e) {
+            e.preventDefault();
+            const u = window.auth && window.auth.currentUser;
+            const pwd = document.getElementById('logoutPassword').value;
+            const btn = document.getElementById('logoutConfirmBtn');
+            if (!u) { closeLogoutModal(); return; }
+            if (!pwd) return showLogoutError('Şifrəni daxil edin.');
+
+            btn.disabled = true;
+            btn.classList.add('opacity-60', 'cursor-not-allowed');
+            try {
+                // Şifrə yalnız həmin hesabın şifrəsi ilə təkrar giriş uğurlu olarsa düzgün sayılır
+                await window.signInWithEmailAndPassword(window.auth, u.email, pwd);
+                closeLogoutModal();
+                await logoutAdmin();
+            } catch (err) {
+                if (err.code === 'auth/too-many-requests') {
+                    showLogoutError('Çox sayda yanlış cəhd. Bir az gözləyib yenidən cəhd edin.');
+                } else if (['auth/wrong-password', 'auth/invalid-credential', 'auth/invalid-login-credentials'].includes(err.code)) {
+                    showLogoutError('Şifrə yanlışdır. Çıxış mümkün olmadı.');
+                } else {
+                    showLogoutError('Xəta baş verdi: ' + (err.message || err.code));
+                }
+            } finally {
+                btn.disabled = false;
+                btn.classList.remove('opacity-60', 'cursor-not-allowed');
+            }
+        }
+
         async function logoutAdmin() {
             try {
                 await window.signOut(window.auth);
@@ -675,10 +1317,133 @@ Yeni problem: ${description}`;
             } catch (err) { console.error(err); }
         }
  
-        /* ---------- Sİ kateqoriya təyini ---------- */
+        /* ---------- Sİ analizi: kateqoriya + təcililik + təhlükə ---------- */
+        const EMERGENCY_CONTACT = 'Texniki xidmət: +994 XX XXX XX XX'; // ← öz nömrənizi yazın
+
+        const PRIORITY_ORDER = { 'Kritik': 0, 'Yüksək': 1, 'Orta': 2, 'Aşağı': 3 };
+        const PRIORITY_STYLE = {
+            'Kritik': 'bg-rose-50 text-rose-700 border-rose-200',
+            'Yüksək': 'bg-orange-50 text-orange-700 border-orange-200',
+            'Orta':   'bg-amber-50 text-amber-700 border-amber-200',
+            'Aşağı':  'bg-slate-100 text-slate-600 border-slate-200'
+        };
+
+        // Mətn norm() ilə latın əsasına gətirilir, ona görə regex-lər ə→e, ı→i, ş→s kimi yazılıb
+        const HAZARDS = [
+            { label: 'Yanğın / tüstü', call: ' (yanğın xidməti: 101, həyat təhlükəsi: 112)',
+              re: /yangin|tustu|alov|od tut|yaniq|yanma iyi|yanmis iyi/,   // "yanğın söndürücü" kimi avadanlıq sözləri BENIGN-də süzülür
+              steps: ['Dərhal otaqdan və binadan çıxın, başqalarını da xəbərdar edin.',
+                      'Liftdən istifadə etməyin, pilləkənlə enin.',
+                      'Yanğını özünüz söndürməyə çalışmayın, təhlükəsiz məsafədən zəng edin.'] },
+            { label: 'Qaz', call: ' (qaz qəza xidməti: 104, həyat təhlükəsi: 112)',
+              re: /\bqaz\b|qaz iyi|sizinti/,
+              steps: ['Açıq alov yandırmayın, elektrik açarlarını və cihazları işə salıb-söndürməyin.',
+                      'Mümkünsə pəncərələri açıb otağı tərk edin.',
+                      'Təhlükəsiz məsafəyə çıxandan sonra zəng edin.'] },
+            { label: 'Partlayış təhlükəsi', call: ' (həyat təhlükəsi: 112)',
+              re: /partla/,
+              steps: ['Sahəni dərhal tərk edin və insanları uzaqlaşdırın.',
+                      'Yaxın durmayın, zədələnmiş avadanlığa toxunmayın.',
+                      'Təhlükəsiz yerdən zəng edin.'] },
+            { label: 'Elektrik təhlükəsi', call: ' (həyat təhlükəsi: 112)',
+              // "elektrik" sözü tək başına təhlükə sayılmır (məs: "elektrik kəsilib"). Yalnız real təhlükə əlamətləri:
+              re: /qigilcim|qisa qapan|cereyan\w* (vur|carp)\w*|toka? vur|elektrik (carp|vur|soku)|cereyan\w* soku|(aciq|cixmis|zedeli|korlanmis|yanmis|erimis) (elektrik )?(naqil|kabel|sim)|(naqil|kabel|rozetka|elektrik|sayqac|shit|lampa|uzadici)\w* (yanir|yandi|yanib|tustu\w*|partla\w*|qizir|eriyib|erimis)|elektrik (yangin|tehlukesi)/,
+              steps: ['Qığılcım verən naqilə, rozetkaya və cihaza toxunmayın, yaxınlaşmayın.',
+                      'Rütubətli yerdə dayanmayın, insanları təhlükəli sahədən uzaqlaşdırın.',
+                      'Sahəni xəbərdarlıqla qeyd edin və texniki xidməti gözləyin.'] },
+            { label: 'Su basması', call: ' (həyat təhlükəsi: 112)',
+              re: /su bas|\bsel\b|boru (partla|cat)|tavandan su/,
+              steps: ['Elektrik cihazlarından, rozetkalardan və uzadıcılardan uzaq durun.',
+                      'Islaq döşəmədə sürüşmə riskinə görə keçidi xəbərdarlıqla bağlayın.',
+                      'Sənəd və qiymətli əşyaları təhlükəsiz yerə köçürün.'] }
+        ];
+
+        let prioManual = false;   // istifadəçi prioriteti əl ilə dəyişibmi
+
+        // Zərərsiz ifadələr: təhlükə yoxlanışından əvvəl mətndən çıxarılır
+        const BENIGN = [
+            /yangin\s+(sondurucu\w*|siqnal\w*|detektor\w*|hidrant\w*|kran\w*|cixis\w*|nasos\w*|sistem\w*|tehlukesizlik\w*|telim\w*|xidmet\w*|qapi\w*)/g,
+            /elektrik\s+(kesil\w*|sond\w*|yoxdur|getdi|gelmir|olmur|xerc\w*|hesab\w*|qiymet\w*|pulu)/g,
+            /cereyan\w*\s+(kesil\w*|yoxdur|getdi|gelmir)/g,
+            /qaz\s+(pulu|haqqi|borcu|qiymet\w*|sayqac\w*|hesab\w*)/g
+        ];
+        // "yanğın yoxdur" kimi dərhal ardınca gələn inkar təhlükə sayılmır
+        const NEGATION_AFTER = /^\s*(yoxdur|yoxdu|yox|deyil|olmayib)\b/;
+
+        function detectHazards(text) {
+            let n = norm(text);
+            BENIGN.forEach(rx => { n = n.replace(rx, ' '); });
+            return HAZARDS.filter(h => {
+                const rx = new RegExp(h.re.source, 'g');
+                let m;
+                while ((m = rx.exec(n)) !== null) {
+                    if (!NEGATION_AFTER.test(n.slice(m.index + m[0].length))) return true;
+                    if (m[0].length === 0) rx.lastIndex++;
+                }
+                return false;
+            });
+        }
+
+        function suggestPriority(n) {
+            // Elektrik/işıq kəsilməsi təhlükə deyil, amma təcili sayılır
+            if (/elektrik (kesil|sond|yox|getdi|gelmir)|cereyan\w* (kesil|yox|getdi)|isiq (yoxdur|kesil|sond)|su axir|damir|lift|kilid|isti yoxdur/.test(n)) return 'Yüksək';
+            if (/boya|kosmetik|estetik|tozlu|leke|asilqan/.test(n)) return 'Aşağı';
+            return 'Orta';
+        }
+
+        function onPriorityManual() { prioManual = true; }
+
+        function applyHazardUI(hz, text) {
+            const sel = document.getElementById('priority');
+            const note = document.getElementById('priorityNote');
+            const box = document.getElementById('safetyBox');
+
+            if (hz.length) {
+                sel.value = 'Kritik';
+                sel.disabled = true;                       // təhlükə varsa prioritet aşağı salına bilməz
+                note.innerText = 'Təhlükə sözləri aşkarlandı: prioritet avtomatik "Kritik" təyin edildi və aşağı salınmır.';
+                const main = hz[0];                        // ən yüksək təhlükə (siyahı sırası ilə)
+                document.getElementById('safetyLabel').innerText = hz.map(h => h.label).join(', ');
+                document.getElementById('safetyContact').innerText = EMERGENCY_CONTACT;
+                document.getElementById('safetyCall').innerText = main.call;
+                document.getElementById('safetySteps').innerHTML = main.steps.map(s => `<li>${esc(s)}</li>`).join('');
+                box.classList.remove('hidden');
+            } else {
+                sel.disabled = false;
+                box.classList.add('hidden');
+                if (!prioManual) sel.value = suggestPriority(norm(text));
+                note.innerText = prioManual ? '' : 'Sİ təklifi: "' + sel.value + '". İstəsəniz dəyişə bilərsiniz.';
+            }
+        }
+
+        function countPrevious(b, f, r, cat) {
+            const nb = normLoc(b), nf = normLoc(f), nr = normLoc(r);
+            return problemsCache.filter(p =>
+                normLoc(p.building) === nb && normLoc(p.floor) === nf && normLoc(p.room) === nr && p.category === cat
+            ).length;
+        }
+
+        function updateHistoryInfo() {
+            const box = document.getElementById('historyInfo');
+            const b = document.getElementById('building').value;
+            const f = document.getElementById('floor').value;
+            const r = document.getElementById('room').value;
+            const cat = document.getElementById('category').value;
+            if (!b.trim() || !f.trim() || !r.trim()) return box.classList.add('hidden');
+            const n = countPrevious(b, f, r, cat);
+            if (n === 0) return box.classList.add('hidden');
+            document.getElementById('historyText').innerText = `Bu otaqda bu kateqoriyada əvvəl ${n} dəfə müraciət olunub`;
+            box.classList.remove('hidden');
+        }
+
         function aiAnalyzeLive(text) {
             const box = document.getElementById('aiPreviewBox');
-            if (!text || text.length < 5) { box.classList.add('hidden'); return; }
+            const hz = detectHazards(text || '');
+            if (!text || (text.length < 5 && !hz.length)) {
+                box.classList.add('hidden');
+                applyHazardUI([], '');
+                return;
+            }
             box.classList.remove('hidden');
             const lower = text.toLowerCase();
             let cat = "Texniki Nasazlıq";
@@ -689,6 +1454,13 @@ Yeni problem: ${description}`;
             }
             document.getElementById('aiCategoryTag').innerText = cat;
             document.getElementById('category').value = cat;
+            applyHazardUI(hz, text);
+        }
+
+        function priorityBadge(p) {
+            if (!p.priority) return '';
+            const cls = PRIORITY_STYLE[p.priority] || PRIORITY_STYLE['Orta'];
+            return `<span class="inline-block text-[11px] font-semibold px-2 py-0.5 rounded-md border ${cls}">${esc(p.priority)}</span>`;
         }
  
         /* ---------- Problem göndərmə ---------- */
@@ -706,23 +1478,57 @@ Yeni problem: ${description}`;
                 return;
             }
  
+            const descText = document.getElementById('description').value.trim();
+            const hazards = detectHazards(descText);
+            // Təhlükə varsa, seçimdən asılı olmayaraq həmişə Kritik
+            const priority = hazards.length ? 'Kritik' : document.getElementById('priority').value;
+
+            const now = Date.now();
+            const catValue = document.getElementById('category').value;
+            // Eyni məkan və kateqoriyada əvvəlki müraciətlərin sayı
+            const repeatCount = countPrevious(
+                document.getElementById('building').value,
+                document.getElementById('floor').value,
+                document.getElementById('room').value,
+                catValue
+            );
             const newProb = {
                 building: document.getElementById('building').value.trim(),
                 floor: document.getElementById('floor').value.trim(),
                 room: document.getElementById('room').value.trim(),
                 senderName: document.getElementById('senderName').value.trim(),
-                description: document.getElementById('description').value.trim(),
+                description: descText,
                 category: document.getElementById('category').value,
+                priority,
+                priorityBy: (hazards.length || !prioManual) ? 'ai' : 'user',   // 'ai' | 'user' | 'admin'
+                aiSteps: getSuggestedSteps({ description: descText, category: catValue }),
+                repeatCount,
+                hazard: hazards.length > 0,
                 status: 'Yeni',
-                createdAt: new Date().toLocaleDateString('az-AZ', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
+                createdAt: new Date(now).toLocaleDateString('az-AZ', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
+                createdAtMs: now,
+                statusHistory: [{ status: 'Yeni', at: now }],
+                assignee: '',
+                assignedDept: catValue,
+                assignedAt: null,
+                dueDate: defaultDueMs(priority, now),
+                resolvedAt: null,
                 rating: 0,
                 reportsCount: 1
             };
  
             try {
-                await window.addDoc(window.collection(window.db, "problems"), newProb);
+                const ticketNo = await createProblemWithTicket(newProb);
+                localTickets[ticketNo] = { id: ticketNo, ticketNo, ...newProb };
+                addMine(ticketNo);
                 resetUserForm();
-                showSuccess("Problem uğurla sistemə göndərildi!");
+                showSuccess(
+                    `Problem uğurla göndərildi! Müraciət nömrəniz: ${ticketNo}` +
+                    (hazards.length ? ' Təhlükəli hal olduğu üçün texniki xidmətə də dərhal zəng edin.' : ''),
+                    false, 15000
+                );
+                openTracking(ticketNo, false);
+                renderMyList();
             } catch (err) {
                 console.error(err);
                 showSuccess("Problem göndərilərkən xəta baş verdi.", true);
@@ -733,9 +1539,46 @@ Yeni problem: ${description}`;
         function initRealtimeSync() {
             const q = window.query(window.collection(window.db, "problems"));
             window.onSnapshot(q, (snapshot) => {
-                problemsCache = [];
-                snapshot.forEach((docSnap) => problemsCache.push({ id: docSnap.id, ...docSnap.data() }));
+                const nextCache = [];
+                const nextMap = new Map();
+
+                snapshot.forEach((docSnap) => {
+                    const item = { id: docSnap.id, ...docSnap.data() };
+                    nextCache.push(item);
+                    nextMap.set(item.id, {
+                        status: item.status || 'Yeni',
+                        assignee: item.assignee || '',
+                        ticketNo: item.ticketNo || item.id
+                    });
+
+                    // Bildiriş yalnız bu cihazdan göndərilən / dəstək verilən müraciətlər üçün yaranır
+                    if (notifInitialized && prevProblemState.has(item.id) && getMine().includes(item.ticketNo || item.id)) {
+                        const prev = prevProblemState.get(item.id);
+                        const curStatus = item.status || 'Yeni';
+                        const curAssignee = item.assignee || '';
+                        const code = item.ticketNo || item.id;
+
+                        if (prev.status !== curStatus && prev.assignee !== curAssignee) {
+                            addNotification(code, `${code}: status "${curStatus}" oldu, məsul şəxs: ${curAssignee || 'təyin edilməyib'}.`);
+                        } else if (prev.status !== curStatus) {
+                            addNotification(code, `${code}: status "${prev.status}" → "${curStatus}" olaraq dəyişdirildi.`);
+                        } else if (prev.assignee !== curAssignee) {
+                            addNotification(code, curAssignee
+                                ? `${code}: məsul əməkdaş "${curAssignee}" təyin edildi.`
+                                : `${code}: məsul əməkdaş təyinatı ləğv edildi.`);
+                        }
+                    }
+                });
+
+                prevProblemState.clear();
+                nextMap.forEach((v, k) => prevProblemState.set(k, v));
+                notifInitialized = true;
+                problemsCache = nextCache;
+                cacheLoaded = true;
+
                 renderAdminView();
+                renderTracking();
+                renderMyList();
                 // İstifadəçi formu doludursa, dublikat vəziyyətini yenilə
                 if (document.getElementById('description')) runDuplicateCheck();
             });
@@ -754,56 +1597,579 @@ Yeni problem: ${description}`;
             return `${n}-${suffix}`;
         }
  
-        // "Həll olundu" düyməsi: status dəyişir və problem siyahıdan çıxır
+        // "Həll olundu" düyməsi: status dəyişir, tarixçəyə yazılır və problem siyahıdan çıxır
         async function resolveProblem(id) {
             try {
-                await window.updateDoc(window.doc(window.db, "problems", id), { status: 'Həll edildi' });
+                const p = problemsCache.find(x => x.id === id);
+                const now = Date.now();
+                const updates = {
+                    status: 'Həll edildi',
+                    statusHistory: [...(p ? getHistory(p) : []), { status: 'Həll edildi', at: now }]
+                };
+                if (!p || !Number.isFinite(p.resolvedAt)) updates.resolvedAt = now;
+                await window.updateDoc(window.doc(window.db, "problems", id), updates);
             } catch (err) { console.error(err); }
         }
  
-        async function deleteProblem(id) {
-            if (confirm("Bu problemi silmək istədiyinizə əminsinizmi?")) {
-                try {
-                    await window.deleteDoc(window.doc(window.db, "problems", id));
-                } catch (err) { console.error(err); }
+        function deleteProblem(id) {
+            const p = problemsCache.find(x => x.id === id);
+            deleteTargetId = id;
+            document.getElementById('deleteConfirmTicket').innerText = p?.ticketNo || id;
+            document.getElementById('deleteConfirmModal').classList.remove('hidden');
+        }
+
+        function closeDeleteModal() {
+            deleteTargetId = null;
+            document.getElementById('deleteConfirmModal').classList.add('hidden');
+        }
+
+        async function confirmDeleteProblem() {
+            if (!deleteTargetId) return;
+            const id = deleteTargetId;
+            closeDeleteModal();
+            try {
+                await window.deleteDoc(window.doc(window.db, "problems", id));
+            } catch (err) { console.error(err); }
+        }
+
+        function setAdminFilter(mode) {
+            adminFilter = mode;
+            ['active', 'all', 'closed'].forEach(m => {
+                const btn = document.getElementById(`filter-${m}`);
+                if (!btn) return;
+                btn.className = (m === mode)
+                    ? 'px-3 py-1.5 rounded-lg bg-white text-indigo-700 shadow-sm transition'
+                    : 'px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition';
+            });
+            renderAdminView();
+        }
+
+        function getSuggestedSteps(p) {
+            if (Array.isArray(p.aiSteps) && p.aiSteps.length) return p.aiSteps;
+            const hz = detectHazards(p.description || '');
+            if (hz.length) return hz[0].steps;
+            if (p.category === 'İT Problemi') {
+                return [
+                    'Cihazın elektrik və şəbəkə kabellərinin qoşulu olduğunu yoxlayın.',
+                    'Sistemi və ya avadanlığı yenidən başladın.',
+                    'Nasazlıq davam edərsə, İT mütəxəssisinin müdaxiləsini gözləyin.'
+                ];
+            }
+            return [
+                'Məkanda təhlükəsizlik riski olub-olmadığını yoxlayın.',
+                'Nasaz avadanlığa özbaşına texniki müdaxilə etməyin.',
+                'Məsul şöbənin əməkdaşını məlumatlandırın.'
+            ];
+        }
+
+        function populateAssigneeSuggestions() {
+            const dl = document.getElementById('assigneeSuggestions');
+            if (!dl) return;
+            const names = [...new Set(problemsCache.map(x => (x.assignee || '').trim()).filter(Boolean))];
+            dl.innerHTML = names.map(n => `<option value="${esc(n)}"></option>`).join('');
+        }
+
+        function onManagePriorityChange() {
+            const prio = document.getElementById('managePriority').value;
+            document.getElementById('managePlanned').value = toLocalInput(defaultDueMs(prio));
+        }
+
+        function onManageAssigneeInput() {
+            const val = document.getElementById('manageAssignee').value.trim();
+            const stEl = document.getElementById('manageStatus');
+            if (val && stEl.value === 'Yeni müraciət') {
+                stEl.value = 'Qəbul edildi';
             }
         }
- 
+
+        /* ---------- Admin: mərhələ / məsul / plan ---------- */
+        function openManage(id) {
+            const p = problemsCache.find(x => x.id === id);
+            if (!p) return;
+            manageId = id;
+            populateAssigneeSuggestions();
+
+            document.getElementById('manageTicket').innerText = p.ticketNo || '(nömrəsiz köhnə qeyd)';
+            document.getElementById('manageMeta').innerText = `${p.building || ''} / ${ordinal(p.floor)} mərtəbə / ${ordinal(p.room)} otaq • Göndərən: ${p.senderName || '—'}`;
+            document.getElementById('manageReportsCount').innerText = p.reportsCount || 1;
+            const byLabel = { ai: 'Sİ təklif etdi', user: 'istifadəçi seçdi', admin: 'admin dəyişdi' }[p.priorityBy] || '—';
+            document.getElementById('managePriorityBy').innerText =
+                `Prioritet mənbəyi: ${byLabel}` +
+                (Number(p.repeatCount) > 0 ? ` • Bu məkanda bu kateqoriyada əvvəl ${p.repeatCount} dəfə müraciət olunub` : '');
+            document.getElementById('manageDescription').innerText = p.description || '';
+
+            const steps = getSuggestedSteps(p);
+            document.getElementById('manageAiStepsList').innerHTML = steps.map(s => `<li>${esc(s)}</li>`).join('');
+
+            const prio = p.priority || 'Orta';
+            document.getElementById('managePriority').value = prio;
+            document.getElementById('manageStatus').value = normalizeStatus(p.status);
+            document.getElementById('manageAssignee').value = p.assignee || '';
+            document.getElementById('manageDept').value = p.assignedDept || p.category || 'Texniki Nasazlıq';
+
+            const dueMs = getDue(p) ?? defaultDueMs(prio, p.createdAtMs || Date.now());
+            document.getElementById('managePlanned').value = toLocalInput(dueMs);
+
+            const hist = getHistory(p).length
+                ? getHistory(p)
+                : [{ status: normalizeStatus(p.status), at: p.createdAtMs || Date.now() }];
+            document.getElementById('manageHistoryList').innerHTML = hist.map(h => `
+                <li class="flex items-center justify-between gap-2 text-slate-700 border-b border-slate-200/70 pb-1 last:border-none last:pb-0">
+                    <span class="font-semibold">${esc(normalizeStatus(h.status))}</span>
+                    <span class="text-[11px] text-slate-400">${esc(fmtDT(h.at))}</span>
+                </li>
+            `).join('');
+
+            document.getElementById('manageModal').classList.remove('hidden');
+        }
+
+        function closeManage() {
+            manageId = null;
+            document.getElementById('manageModal').classList.add('hidden');
+        }
+
+        async function saveManage() {
+            const p = problemsCache.find(x => x.id === manageId);
+            if (!p) return closeManage();
+
+            const assignee = document.getElementById('manageAssignee').value.trim();
+            let newStatus = document.getElementById('manageStatus').value;
+            const currentNormStatus = normalizeStatus(p.status);
+
+            // Məsul şəxs təyin ediləndə status avtomatik "Qəbul edildi" olur
+            if (assignee && !(p.assignee || '').trim() && newStatus === 'Yeni müraciət') {
+                newStatus = 'Qəbul edildi';
+            }
+
+            const newPriority = document.getElementById('managePriority').value;
+            const assignedDept = document.getElementById('manageDept').value;
+            const plannedVal = document.getElementById('managePlanned').value;
+            const dueDate = plannedVal ? new Date(plannedVal).getTime() : defaultDueMs(newPriority);
+
+            const updates = {
+                assignee,
+                assignedDept,
+                priority: newPriority,
+                // Prioriteti admin dəyişibsə "admin", əks halda əvvəlki mənbə qalır
+                priorityBy: newPriority !== p.priority ? 'admin' : (p.priorityBy || 'ai'),
+                dueDate
+            };
+
+            if (assignee && !(p.assignee || '').trim()) {
+                updates.assignedAt = Date.now();
+            } else if (!assignee) {
+                updates.assignedAt = null;
+            }
+
+            if (newStatus !== currentNormStatus) {
+                updates.status = newStatus;
+                updates.statusHistory = [...getHistory(p), { status: newStatus, at: Date.now() }];
+                // İlk bağlanma vaxtı qorunur (Həll edildi → Bağlandı keçidində üzərinə yazılmır)
+                if (CLOSED_STATUSES.includes(newStatus) && !Number.isFinite(p.resolvedAt)) {
+                    updates.resolvedAt = Date.now();
+                }
+            }
+
+            try {
+                await window.updateDoc(window.doc(window.db, "problems", p.id), updates);
+                closeManage();
+            } catch (err) {
+                console.error(err);
+                alert("Yadda saxlanarkən xəta baş verdi.");
+            }
+        }
+
+        /* ---------- ANALİTİKA ---------- */
+        const MONTHS_AZ = ['Yan', 'Fev', 'Mar', 'Apr', 'May', 'İyn', 'İyl', 'Avq', 'Sen', 'Okt', 'Noy', 'Dek'];
+        const DEPT_LIST = ['Texniki Nasazlıq', 'İT Problemi', 'Kitabxana', 'İnsan Resursları', 'Digər'];
+        const DEPT_LABEL = {
+            'Texniki Nasazlıq': 'Texniki şöbə', 'İT Problemi': 'İT şöbəsi', 'Kitabxana': 'Kitabxana',
+            'İnsan Resursları': 'İnsan resursları', 'Digər': 'Digər'
+        };
+        const PRIORITY_BAR = { 'Kritik': 'bg-rose-500', 'Yüksək': 'bg-orange-500', 'Orta': 'bg-amber-400', 'Aşağı': 'bg-slate-400' };
+
+        // Problemin həll edildiyi vaxt (resolvedAt, yoxsa tarixçədəki ilk "bağlanma" qeydi)
+        function resolvedAtOf(p) {
+            if (Number.isFinite(p.resolvedAt)) return p.resolvedAt;
+            const h = getHistory(p).filter(x => CLOSED_STATUSES.includes(x.status) && Number.isFinite(x.at));
+            return h.length ? Math.min(...h.map(x => x.at)) : null;
+        }
+
+        // Müddət: dəqiqə, saat və ya gün
+        function fmtDuration(ms) {
+            const mins = Math.max(0, Math.round(ms / 60000));
+            if (mins < 60) return `${mins} dəq`;
+            const hours = Math.floor(mins / 60);
+            if (hours < 24) return `${hours} saat${mins % 60 ? ' ' + (mins % 60) + ' dəq' : ''}`;
+            const days = Math.floor(hours / 24), h = hours % 24;
+            return `${days} gün${h ? ' ' + h + ' saat' : ''}`;
+        }
+
+        function locKey(p) { return `${normLoc(p.building)}|${normLoc(p.floor)}|${normLoc(p.room)}`; }
+        function locLabel(p) { return `${esc(p.building)} / ${ordinal(p.floor)} mərtəbə / ${ordinal(p.room)} otaq`; }
+
+        function analyticsBarRow(label, count, max, colorCls, extra = '') {
+            const pct = max > 0 ? Math.round((count / max) * 100) : 0;
+            return `
+                <div>
+                    <div class="flex items-center justify-between text-xs mb-1 gap-2">
+                        <span class="font-medium text-slate-700 truncate">${label}</span>
+                        <span class="font-bold text-slate-900 whitespace-nowrap">${count}${extra}</span>
+                    </div>
+                    <div class="h-2 rounded-full bg-slate-100 overflow-hidden">
+                        <div class="h-full rounded-full ${colorCls}" style="width:${pct}%"></div>
+                    </div>
+                </div>`;
+        }
+
+        function renderAnalytics() {
+            const set = (id, html) => { const el = document.getElementById(id); if (el) el.innerHTML = html; };
+            const emptyMsg = '<p class="text-xs text-slate-400">Məlumat yoxdur.</p>';
+
+            /* 1) Orta həll müddəti */
+            const durations = [];
+            const resolved = problemsCache.filter(p => !isActive(p));
+            resolved.forEach(p => {
+                const r = resolvedAtOf(p);
+                if (r && Number.isFinite(p.createdAtMs) && r >= p.createdAtMs) durations.push(r - p.createdAtMs);
+            });
+            if (durations.length) {
+                const avg = durations.reduce((a, b) => a + b, 0) / durations.length;
+                set('an-avgTime', esc(fmtDuration(avg)));
+                set('an-avgTimeNote', `${durations.length} həll olunmuş müraciət əsasında`);
+            } else {
+                set('an-avgTime', '—');
+                set('an-avgTimeNote', 'Hələ həll olunmuş müraciət yoxdur.');
+            }
+
+            /* 2) Vaxtında həll faizi */
+            let measured = 0, onTime = 0;
+            resolved.forEach(p => {
+                const r = resolvedAtOf(p);
+                if (!r) return;
+                const due = getDue(p) ??
+                    (Number.isFinite(p.createdAtMs) ? defaultDueMs(p.priority || 'Orta', p.createdAtMs) : null);
+                if (!due) return;
+                measured++;
+                if (r <= due) onTime++;
+            });
+            const pctOnTime = measured ? Math.round((onTime / measured) * 100) : null;
+            set('an-onTime', pctOnTime === null ? '—' : `${pctOnTime}%`);
+            const bar = document.getElementById('an-onTimeBar');
+            if (bar) bar.style.width = (pctOnTime || 0) + '%';
+            set('an-onTimeNote', measured ? `${measured} müraciətdən ${onTime}-i icra müddətində həll edilib` : 'Hələ həll olunmuş müraciət yoxdur.');
+
+            /* 3) Son 6 ay üzrə sütun diaqramı */
+            const now = new Date();
+            const months = [];
+            for (let i = 5; i >= 0; i--) {
+                const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                months.push({ y: d.getFullYear(), m: d.getMonth(), count: 0 });
+            }
+            problemsCache.forEach(p => {
+                if (!Number.isFinite(p.createdAtMs)) return;
+                const d = new Date(p.createdAtMs);
+                const slot = months.find(x => x.y === d.getFullYear() && x.m === d.getMonth());
+                if (slot) slot.count++;
+            });
+            const maxM = Math.max(1, ...months.map(x => x.count));
+            const totalM = months.reduce((a, x) => a + x.count, 0);
+            set('an-monthTotal', `${totalM} müraciət`);
+            set('an-monthChart', months.map((x, i) => {
+                const h = Math.round((x.count / maxM) * 120);
+                const isLast = i === months.length - 1;
+                return `
+                    <div class="flex-1 flex flex-col items-center justify-end h-full min-w-0">
+                        <span class="text-xs font-bold text-slate-700 mb-1">${x.count}</span>
+                        <div class="bar-col w-full max-w-[44px] rounded-t-lg ${isLast ? 'bg-indigo-600' : 'bg-indigo-300'}" style="height:${Math.max(x.count ? 4 : 2, h)}px"></div>
+                        <span class="text-[11px] text-slate-500 mt-1.5">${MONTHS_AZ[x.m]}</span>
+                    </div>`;
+            }).join(''));
+
+            /* 4) Şöbələr üzrə bölgü */
+            const deptCount = {};
+            DEPT_LIST.forEach(d => deptCount[d] = 0);
+            problemsCache.forEach(p => {
+                const d = DEPT_LIST.includes(p.assignedDept) ? p.assignedDept
+                        : (DEPT_LIST.includes(p.category) ? p.category : 'Digər');
+                deptCount[d]++;
+            });
+            const maxD = Math.max(1, ...Object.values(deptCount));
+            set('an-byDept', DEPT_LIST.map(d => analyticsBarRow(esc(DEPT_LABEL[d]), deptCount[d], maxD, 'bg-indigo-500')).join(''));
+
+            /* 5) Təcililik üzrə bölgü */
+            const prioCount = { 'Kritik': 0, 'Yüksək': 0, 'Orta': 0, 'Aşağı': 0 };
+            problemsCache.forEach(p => { prioCount[PRIORITY_ORDER[p.priority] !== undefined ? p.priority : 'Orta']++; });
+            const maxP = Math.max(1, ...Object.values(prioCount));
+            set('an-byPriority', Object.keys(prioCount).map(k => analyticsBarRow(esc(k), prioCount[k], maxP, PRIORITY_BAR[k])).join(''));
+
+            /* 6) Ən problemli ilk 5 otaq / bina */
+            const roomMap = new Map(), bldMap = new Map();
+            problemsCache.forEach(p => {
+                const rk = locKey(p);
+                if (!roomMap.has(rk)) roomMap.set(rk, { label: locLabel(p), n: 0 });
+                roomMap.get(rk).n++;
+                const bk = normLoc(p.building);
+                if (!bldMap.has(bk)) bldMap.set(bk, { label: esc((p.building || '—').trim()), n: 0 });
+                bldMap.get(bk).n++;
+            });
+            const top5 = (m) => [...m.values()].sort((a, b) => b.n - a.n).slice(0, 5);
+            const rooms = top5(roomMap), blds = top5(bldMap);
+            set('an-topRooms', rooms.length
+                ? rooms.map(x => analyticsBarRow(x.label, x.n, rooms[0].n, 'bg-rose-500')).join('') : emptyMsg);
+            set('an-topBuildings', blds.length
+                ? blds.map(x => analyticsBarRow(x.label, x.n, blds[0].n, 'bg-orange-500')).join('') : emptyMsg);
+
+            /* 7) Təkrar problemlər: eyni məkan + kateqoriya, 2 və daha çox dəfə */
+            const repMap = new Map();
+            problemsCache.forEach(p => {
+                const k = locKey(p) + '|' + normLoc(p.category);
+                if (!repMap.has(k)) repMap.set(k, { loc: locLabel(p), cat: p.category || '—', n: 0, last: 0 });
+                const g = repMap.get(k);
+                g.n++;
+                if ((p.createdAtMs || 0) > g.last) g.last = p.createdAtMs || 0;
+            });
+            const repeats = [...repMap.values()].filter(x => x.n >= 2).sort((a, b) => b.n - a.n || b.last - a.last);
+            set('an-repeats', repeats.length
+                ? repeats.map(x => `
+                    <div class="py-2.5 flex items-center justify-between gap-3">
+                        <div class="min-w-0">
+                            <p class="font-semibold text-slate-800 truncate">${x.loc}</p>
+                            <p class="text-[11px] text-slate-500">${esc(x.cat)}${x.last ? ' • son müraciət: ' + esc(fmtDT(x.last)) : ''}</p>
+                        </div>
+                        <span class="whitespace-nowrap text-[11px] font-bold px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200">${x.n} dəfə</span>
+                    </div>`).join('')
+                : '<p class="py-3 text-xs text-slate-400">Təkrar problem aşkarlanmayıb.</p>');
+        }
+
         /* ---------- Admin cədvəli ---------- */
         function renderAdminView() {
+            const activeCriticalCount = problemsCache.filter(p => isActive(p) && p.priority === 'Kritik').length;
+            const overdueCount = problemsCache.filter(isOverdue).length;
+
+            // Brauzer başlığında kritik sayğac
+            document.title = activeCriticalCount > 0
+                ? `(${activeCriticalCount} Kritik) ${BASE_TITLE}`
+                : BASE_TITLE;
+
             if (!window.auth || !window.auth.currentUser) return;
  
             document.getElementById('stat-total').innerText = problemsCache.length;
             document.getElementById('stat-open').innerText = problemsCache.filter(isActive).length;
             document.getElementById('stat-resolved').innerText = problemsCache.filter(p => !isActive(p)).length;
+            document.getElementById('stat-critical').innerText = activeCriticalCount;
+            document.getElementById('stat-overdue').innerText = overdueCount;
+
+            // Analitika bölməsi
+            renderAnalytics();
+
+            // Panelin yuxarısında yanıb-sönən qırmızı xəbərdarlıq
+            const banner = document.getElementById('adminCriticalBanner');
+            if (banner) {
+                if (activeCriticalCount > 0) {
+                    document.getElementById('bannerCriticalCount').innerText = activeCriticalCount;
+                    banner.classList.remove('hidden');
+                } else {
+                    banner.classList.add('hidden');
+                }
+            }
+
+            // Filtr
+            let list = problemsCache.slice();
+            if (adminFilter === 'active') list = list.filter(isActive);
+            else if (adminFilter === 'closed') list = list.filter(p => !isActive(p));
+
+            // Sıralama: əvvəl təcililik (Kritik → Aşağı), sonra köhnədən yeniyə
+            list.sort((a, b) => {
+                const pa = PRIORITY_ORDER[a.priority] ?? 2;
+                const pb = PRIORITY_ORDER[b.priority] ?? 2;
+                if (pa !== pb) return pa - pb;
+                return (a.createdAtMs || 0) - (b.createdAtMs || 0);
+            });
  
             const tbody = document.getElementById('adminTableBody');
-            const activeList = problemsCache.filter(isActive);   // həll olunanlar göstərilmir
- 
-            if (activeList.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" class="p-6 text-center text-xs text-slate-400">Aktiv problem yoxdur.</td></tr>`;
+            if (list.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" class="p-6 text-center text-xs text-slate-400">Bu filtr üzrə müraciət yoxdur.</td></tr>`;
                 return;
             }
  
-            tbody.innerHTML = activeList.map(p => `
-                <tr class="hover:bg-slate-50/80 transition">
+            tbody.innerHTML = list.map(p => `
+                <tr class="hover:bg-slate-50/80 transition ${isActive(p) && p.priority === 'Kritik' ? 'bg-rose-50/60' : ''}">
+                    <td class="p-4 font-mono text-xs font-semibold text-indigo-700 whitespace-nowrap">${esc(p.ticketNo || '—')}</td>
                     <td class="p-4">
                         <p class="font-bold text-slate-900 whitespace-nowrap">${esc(p.building)} / ${ordinal(p.floor)} mərtəbə / ${ordinal(p.room)} otaq</p>
                     </td>
                     <td class="p-4 text-slate-700">${esc(p.senderName)}</td>
                     <td class="p-4 text-slate-600 max-w-xs truncate" title="${esc(p.description)}">${esc(p.description)}</td>
-                    <td class="p-4"><span class="text-xs font-medium text-slate-800">${esc(p.category)}</span></td>
                     <td class="p-4">
-                        <button onclick="resolveProblem('${esc(p.id)}')" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-xs font-semibold px-3 py-1.5 rounded-lg transition whitespace-nowrap">
-                            <i class="fa-solid fa-check mr-1"></i> Həll olundu
-                        </button>
+                        <span class="text-xs font-medium text-slate-800">${esc(p.category)}</span>
+                        <div class="mt-1 flex items-center gap-1">${priorityBadge(p)}</div>
                     </td>
-                    <td class="p-4 text-right">
-                        <button onclick="deleteProblem('${esc(p.id)}')" class="text-rose-500 hover:text-rose-700 text-xs px-2 py-1 rounded transition" title="Sil"><i class="fa-solid fa-trash"></i></button>
+                    <td class="p-4">
+                        <div class="flex flex-col items-start gap-1">${statusBadge(p)}${overdueBadge(p)}</div>
+                    </td>
+                    <td class="p-4 text-xs text-slate-600 whitespace-nowrap">
+                        <p class="font-medium">${p.assignee ? esc(p.assignee) : '<span class="text-slate-400 font-normal">Təyin edilməyib</span>'}</p>
+                        ${p.assignedDept ? `<p class="text-[11px] text-slate-400">${esc(p.assignedDept)}</p>` : ''}
+                        <p class="${isOverdue(p) ? 'text-rose-600 font-semibold' : 'text-slate-500'}">${getDue(p) !== null ? esc(fmtDT(getDue(p))) : '<span class="text-slate-400">Plan yoxdur</span>'}</p>
+                    </td>
+                    <td class="p-4 text-right whitespace-nowrap">
+                        <button onclick="openManage('${esc(p.id)}')" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-semibold px-2.5 py-1.5 rounded-lg transition mr-1" title="Detal və təyinat">
+                            <i class="fa-solid fa-pen-to-square mr-1"></i> İdarə et
+                        </button>
+                        ${isActive(p) ? `
+                        <button onclick="resolveProblem('${esc(p.id)}')" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-xs font-semibold px-2.5 py-1.5 rounded-lg transition mr-1">
+                            <i class="fa-solid fa-check mr-1"></i> Həll olundu
+                        </button>` : ''}
+                        <button onclick="deleteProblem('${esc(p.id)}')" class="text-rose-500 hover:text-rose-700 text-xs px-2 py-1.5 rounded transition" title="Sil"><i class="fa-solid fa-trash"></i></button>
                     </td>
                 </tr>
             `).join('');
         }
+
+        /* ---------- Müraciətin izlənməsi ---------- */
+        function findTicket(no) {
+            return problemsCache.find(p => (p.ticketNo || p.id) === no) || localTickets[no] || null;
+        }
+
+        function showTrackError(msg) {
+            const box = document.getElementById('trackError');
+            document.getElementById('trackErrorText').innerText = msg;
+            box.classList.remove('hidden');
+        }
+        function hideTrackError() {
+            document.getElementById('trackError').classList.add('hidden');
+        }
+
+        function trackSearch(e) {
+            e.preventDefault();
+            const no = document.getElementById('trackInput').value.trim().toUpperCase();
+            if (!no) { trackedNo = null; renderTracking(); return showTrackError('Müraciət nömrəsini daxil edin.'); }
+            if (!/^CF-\d{4}-\d{4}$/.test(no)) {
+                trackedNo = null; renderTracking();
+                return showTrackError('Nömrə formatı düzgün deyil. Nümunə: CF-2611-0001');
+            }
+            if (!findTicket(no)) {
+                trackedNo = null; renderTracking();
+                return showTrackError(cacheLoaded ? 'Bu nömrə ilə müraciət tapılmadı.' : 'Məlumatlar yüklənir, bir az sonra yenidən cəhd edin.');
+            }
+            openTracking(no, false);
+        }
+
+        function openTracking(no, scroll = true) {
+            trackedNo = no;
+            const input = document.getElementById('trackInput');
+            if (input) input.value = no;
+            hideTrackError();
+            renderTracking();
+            if (scroll) {
+                const card = document.getElementById('trackCard');
+                if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }
+
+        function renderTracking() {
+            const box = document.getElementById('trackResult');
+            if (!box) return;
+            if (!trackedNo) { box.innerHTML = ''; return; }
+
+            const p = findTicket(trackedNo);
+            if (!p) {
+                box.innerHTML = cacheLoaded
+                    ? '<p class="text-xs text-slate-400">Bu müraciət artıq mövcud deyil.</p>'
+                    : '<p class="text-xs text-slate-400">Yüklənir...</p>';
+                return;
+            }
+
+            const cur = stageIndex(p.status);
+            const due = getDue(p);
+            const overdue = isOverdue(p);
+
+            const steps = STAGES.map((st, i) => {
+                const done = i < cur || (i === cur && i === STAGES.length - 1);
+                const isCur = i === cur && !done;
+                const time = stageTime(p, st, i);
+                const dot = done
+                    ? '<span class="w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center text-[11px]"><i class="fa-solid fa-check"></i></span>'
+                    : isCur
+                        ? '<span class="w-6 h-6 rounded-full bg-indigo-600 pulse-dot flex items-center justify-center"><span class="w-2 h-2 rounded-full bg-white"></span></span>'
+                        : '<span class="w-6 h-6 rounded-full bg-slate-200 border border-slate-300"></span>';
+                const line = i < STAGES.length - 1
+                    ? `<span class="flex-1 w-0.5 my-1 ${i < cur ? 'bg-emerald-400' : 'bg-slate-200'}"></span>` : '';
+                return `
+                    <li class="flex gap-3">
+                        <div class="flex flex-col items-center">${dot}${line}</div>
+                        <div class="pb-4 min-w-0">
+                            <p class="text-sm ${isCur ? 'font-bold text-indigo-700' : done ? 'font-semibold text-slate-800' : 'text-slate-400'}">${esc(STAGE_LABELS[i])}${isCur ? ' <span class="text-[10px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 px-1.5 py-0.5 rounded ml-1">Cari mərhələ</span>' : ''}</p>
+                            <p class="text-[11px] ${time ? 'text-slate-500' : 'text-slate-300'}">${time ? esc(time) : (done ? 'Mərhələ keçilib' : (isCur ? 'Hazırda bu mərhələdədir' : 'Hələ çatılmayıb'))}</p>
+                        </div>
+                    </li>`;
+            }).join('');
+
+            box.innerHTML = `
+                <div class="border border-slate-200 rounded-2xl p-4 sm:p-5 space-y-4">
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <span class="font-mono text-sm font-bold text-indigo-700">${esc(p.ticketNo || p.id)}</span>
+                        <div class="flex items-center gap-1.5">${priorityBadge(p)}${statusBadge(p)}</div>
+                    </div>
+                    <div class="text-xs text-slate-600 space-y-1">
+                        <p><i class="fa-solid fa-location-dot text-slate-400 mr-1.5"></i>${esc(p.building)} / ${ordinal(p.floor)} mərtəbə / ${ordinal(p.room)} otaq</p>
+                        <p class="text-slate-700">${esc(p.description)}</p>
+                    </div>
+                    ${overdue ? `
+                    <div class="bg-rose-50 border border-rose-200 text-rose-700 text-xs p-3 rounded-xl flex items-center gap-2">
+                        <i class="fa-solid fa-clock"></i>
+                        <span><strong>Gecikir:</strong> planlaşdırılan vaxt ${esc(lateText(due))} əvvəl keçib.</span>
+                    </div>` : ''}
+                    <ol>${steps}</ol>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs border-t border-slate-100 pt-3">
+                        <div class="bg-slate-50 rounded-xl p-3">
+                            <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Məsul əməkdaş</p>
+                            <p class="text-slate-800 font-medium mt-0.5">${p.assignee ? esc(p.assignee) : '<span class="text-slate-400 font-normal">Hələ təyin edilməyib</span>'}</p>
+                            ${p.assignedDept ? `<p class="text-[11px] text-slate-500">${esc(p.assignedDept)}</p>` : ''}
+                        </div>
+                        <div class="bg-slate-50 rounded-xl p-3">
+                            <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Planlaşdırılan icra</p>
+                            <p class="${overdue ? 'text-rose-600' : 'text-slate-800'} font-medium mt-0.5">${due !== null ? esc(fmtDT(due)) : '<span class="text-slate-400 font-normal">Plan yoxdur</span>'}</p>
+                        </div>
+                    </div>
+                </div>`;
+        }
+
+        /* ---------- Mənim müraciətlərim ---------- */
+        function renderMyList() {
+            const box = document.getElementById('myList');
+            if (!box) return;
+            const mine = getMine();
+            if (!mine.length) {
+                box.innerHTML = '<p class="text-xs text-slate-400">Hələ müraciətiniz yoxdur.</p>';
+                return;
+            }
+            box.innerHTML = mine.map(no => {
+                const p = findTicket(no);
+                if (!p) {
+                    return `
+                        <div class="flex items-center justify-between gap-3 border border-slate-200 rounded-xl p-3 text-xs bg-slate-50">
+                            <span class="font-mono font-bold text-slate-400">${esc(no)}</span>
+                            <span class="text-slate-400">${cacheLoaded ? 'Mövcud deyil' : 'Yüklənir...'}</span>
+                        </div>`;
+                }
+                return `
+                    <button type="button" onclick="openTracking('${esc(no)}', true)"
+                            class="w-full text-left flex items-center justify-between gap-3 border border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/40 rounded-xl p-3 transition">
+                        <div class="min-w-0">
+                            <p class="font-mono text-xs font-bold text-indigo-700">${esc(no)}</p>
+                            <p class="text-xs text-slate-600 truncate">${esc(p.description)}</p>
+                        </div>
+                        <div class="flex flex-col items-end gap-1 shrink-0">${statusBadge(p)}${overdueBadge(p)}</div>
+                    </button>`;
+            }).join('');
+        }
+
+        // "Gecikir" qeydi vaxt keçdikcə öz-özünə görünsün deyə hər dəqiqə yenilənir
+        setInterval(() => { renderTracking(); renderMyList(); renderAdminView(); }, 60000);
+        renderMyList();
+        renderNotifications();
     </script>
 </body>
 </html>
